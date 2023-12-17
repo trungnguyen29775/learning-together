@@ -1,0 +1,23 @@
+@font-face {
+    font-family: 'montserrat';
+    src: url('/public/font/static/Montserrat-Medium.ttf') format('opentype');
+    font-weight: normal;
+    font-style: normal;
+}
+#root {
+    --main-color: #0d1e40;
+    --sub-color: #1a3873;
+    --sub-lighter-color: #2a4883;
+    --font-color: #6077a6;
+    --border-color: #b0c1d9;
+    --highlight-color: #80f2f2;
+    font-family: 'montserrat';
+}
+
+.App {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+}
