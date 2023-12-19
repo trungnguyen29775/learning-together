@@ -1,0 +1,21 @@
+.succeed-wrapper {
+    height: 100%;
+    width: 100%;
+    z-index: 3;
+    position: absolute;
+    display: flex;
+}
+.succeed-message {
+    background-color: var(--font-color);
+    margin: auto;
+    color: white;
+    height: 300px;
+    width: 400px;
+    display: flex;
+    border-radius: 10px;
+    font-size: 30px;
+}
+
+.succeed-message span {
+    margin: auto;
+}

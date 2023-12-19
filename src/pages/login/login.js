@@ -6,8 +6,8 @@ function Login() {
             <form className="login-form">
                 <span className="login-header">Login</span>
                 <div className="login-input-container">
-                    <input placeholder="Username" />
-                    <input placeholder="Password" />
+                    <input name="username" placeholder="Username" />
+                    <input name="password" type="password" placeholder="Password" />
                     <a href="#">Forgot Password?</a>
                 </div>
                 <button type="submit" className="login__button">

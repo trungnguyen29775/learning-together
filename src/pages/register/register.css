@@ -1,16 +1,17 @@
-.login-wrapper {
+.register-wrapper {
     display: flex;
     height: 100%;
     width: 100%;
     align-items: center;
     background-color: var(--main-color);
     color: white;
+    position: relative;
 }
-.login-form {
+.register-form {
     margin: auto;
     display: flex;
     align-items: center;
-    height: 70%;
+    height: 80%;
     width: 40%;
     flex-direction: column;
     background-color: var(--sub-color);
@@ -19,13 +20,13 @@
     padding: 10px 20px;
 }
 
-.login-header {
+.register-header {
     font-size: 50px;
     font-weight: 600;
     margin-top: 20px;
 }
 
-.login-input-container {
+.register-input-container {
     display: flex;
     flex-direction: column;
     width: 100%;
@@ -34,7 +35,7 @@
     margin-bottom: 20px;
 }
 
-.login-input-container input {
+.register-input-container input {
     width: 80%;
     border-radius: 10px;
     height: 40px;
@@ -46,18 +47,18 @@
     font-weight: 600;
     color: var(--main-color);
 }
-.login-input-container input:focus {
+.register-input-container input:focus {
     outline: 0px;
 }
 
-.login-input-container a {
+.register-input-container a {
     text-decoration: none;
     color: white;
     text-align: right;
     width: 100%;
 }
 
-.login__button {
+.register__button {
     width: 80%;
     border: 0px;
     border-radius: 5px;
@@ -66,7 +67,14 @@
     font-weight: 700;
     color: var(--main-color);
 }
-.login-register-ask {
+
+.register__button:hover {
+    cursor: pointer;
+    background-color: var(--border-color);
+    border: 0;
+}
+
+.register-register-ask {
     margin-top: 10px;
     display: flex;
     flex-direction: column;
@@ -74,14 +82,14 @@
     align-items: center;
 }
 
-.login-register-ask__span {
+.register-register-ask__span {
     width: 80%;
     text-align: right;
     margin-top: 10px;
     margin-bottom: 5px;
 }
 
-.login-register__button {
+.register-register__button {
     width: 80%;
     border: 0px;
     border-radius: 5px;
@@ -89,4 +97,14 @@
     font-size: 20px;
     font-weight: 700;
     color: var(--main-color);
+    align-items: center;
+    text-align: center;
+    position: relative;
+    line-height: 50px;
+}
+
+.register-register__button:hover {
+    cursor: pointer;
+    background-color: var(--border-color);
+    border: 0;
 }
