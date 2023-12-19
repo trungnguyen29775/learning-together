@@ -102,7 +102,14 @@ function Register() {
                 </button>
                 <div className="register-register-ask">
                     <span className="register-register-ask__span ">Already have an account?</span>
-                    <button className="register-register__button">
+                    <button
+                        className="register-register__button"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            navigate('/login');
+                        }}
+                    >
                         <FaArrowLeft style={{ position: 'absolute', left: '10px', top: '15px' }} />
                         Login
                     </button>
