@@ -1,20 +1,30 @@
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import './login.css';
 import instance from '../../axios/instance';
 import { useNavigate } from 'react-router-dom';
 import Waiting from '../../components/waitingCompoent/waiting';
 import { FaArrowRight } from 'react-icons/fa';
+import StateContext from '../../context/context.context';
+import { logged } from '../../context/action.context';
+import Notify from '../../components/notify/notify';
 
 function Login() {
+    const [state, dispatchState] = useContext(StateContext);
     // useState
     const [loginUsername, setLoginUsername] = useState('');
     const [loginPassword, setLoginPassword] = useState('');
     const [loginStatus, setLoginStatus] = useState('unLogin');
     const navigate = useNavigate();
+    const [notify, setNotify] = useState('');
     // useEffect
     useEffect(() => {
-        if (loginStatus === 'logged') navigate('/home');
+        if (loginStatus === 'logged') {
+            dispatchState(logged(true));
+            navigate('/');
+        }
+        console.log(loginStatus);
     }, [loginStatus]);
+
     // function
     const handleSubmit = (event) => {
         event.preventDefault();
@@ -30,9 +40,14 @@ function Login() {
                     setTimeout(() => {
                         setLoginStatus('logged');
                     }, 1000);
+                } else {
                 }
             })
             .catch((err) => {
+                setTimeout(() => {
+                    setNotify('Wrong Username');
+                    setLoginStatus('loginFail');
+                }, 1000);
                 console.log(err);
             });
     };
@@ -46,7 +61,7 @@ function Login() {
     };
     return (
         <div className="login-wrapper">
-            {loginStatus === 'onLogin' ? <Waiting /> : ''}
+            {loginStatus === 'onLogin' ? <Waiting /> : loginStatus === 'loginFail' ? <Notify message={notify} /> : ''}
             <form className="login-form" onSubmit={(e) => handleSubmit(e)}>
                 <span className="login-header">Login</span>
                 <div className="login-input-container">

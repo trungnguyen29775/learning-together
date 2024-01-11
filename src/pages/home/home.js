@@ -1,7 +1,15 @@
+import { useNavigate } from 'react-router-dom';
 import './home.css';
 import { BsSendFill } from 'react-icons/bs';
+import { useContext, useEffect } from 'react';
+import StateContext from '../../context/context.context';
 
 function Home() {
+    const [state, dispatchState] = useContext(StateContext);
+    const navigate = useNavigate();
+    useEffect(() => {
+        if (!state.login) navigate('/login');
+    }, [state]);
     return (
         <div className="home-wrapper">
             <nav className="navbar-container"></nav>
