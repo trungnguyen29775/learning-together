@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import Waiting from '../../components/waitingCompoent/waiting';
 import { FaArrowRight } from 'react-icons/fa';
 import StateContext from '../../context/context.context';
-import { logged } from '../../context/action.context';
+import { getDataUser, logged } from '../../context/action.context';
 import Notify from '../../components/notify/notify';
 
 function Login() {
@@ -22,7 +22,6 @@ function Login() {
             dispatchState(logged(true));
             navigate('/');
         }
-        console.log(loginStatus);
     }, [loginStatus]);
 
     // function
@@ -37,10 +36,12 @@ function Login() {
             .then((response) => {
                 console.log(response.status);
                 if (response.status === 200) {
+                    dispatchState(getDataUser(response.data.userData));
                     setTimeout(() => {
                         setLoginStatus('logged');
                     }, 1000);
-                } else {
+                } else if (response.status === 500) {
+                    console.log('hello');
                 }
             })
             .catch((err) => {
