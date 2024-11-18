@@ -1,106 +1,60 @@
-import { useContext, useEffect, useState } from 'react';
-import './login.css';
-import instance from '../../axios/instance';
-import { useNavigate } from 'react-router-dom';
-import Waiting from '../../components/waitingCompoent/waiting';
-import { FaArrowRight } from 'react-icons/fa';
-import StateContext from '../../context/context.context';
-import { getDataUser, logged } from '../../context/action.context';
-import Notify from '../../components/notify/notify';
+import * as React from 'react';
+import CssBaseline from '@mui/material/CssBaseline';
+import Stack from '@mui/material/Stack';
+import SignInCard from './SignInCard';
+import Content from './Content';
 
-function Login() {
-    const [state, dispatchState] = useContext(StateContext);
-    // useState
-    const [loginUsername, setLoginUsername] = useState('');
-    const [loginPassword, setLoginPassword] = useState('');
-    const [loginStatus, setLoginStatus] = useState('unLogin');
-    const navigate = useNavigate();
-    const [notify, setNotify] = useState('');
-    // useEffect
-    useEffect(() => {
-        if (loginStatus === 'logged') {
-            dispatchState(logged(true));
-            navigate('/');
-        }
-    }, [loginStatus]);
-
-    // function
-    const handleSubmit = (event) => {
-        event.preventDefault();
-        setLoginStatus('onLogin');
-        instance
-            .post('/login', {
-                username: loginUsername,
-                password: loginPassword,
-            })
-            .then((response) => {
-                console.log(response.status);
-                if (response.status === 200) {
-                    dispatchState(getDataUser(response.data.userData));
-                    setTimeout(() => {
-                        setLoginStatus('logged');
-                    }, 1000);
-                } else if (response.status === 500) {
-                    console.log('hello');
-                }
-            })
-            .catch((err) => {
-                setTimeout(() => {
-                    setNotify('Wrong Username');
-                    setLoginStatus('loginFail');
-                }, 1000);
-                console.log(err);
-            });
-    };
-
-    const handelUsernameChange = (event) => {
-        setLoginUsername(event.target.value);
-    };
-
-    const handleChangePassword = (event) => {
-        setLoginPassword(event.target.value);
-    };
+export default function Login(props) {
     return (
-        <div className="login-wrapper">
-            {loginStatus === 'onLogin' ? <Waiting /> : loginStatus === 'loginFail' ? <Notify message={notify} /> : ''}
-            <form className="login-form" onSubmit={(e) => handleSubmit(e)}>
-                <span className="login-header">Login</span>
-                <div className="login-input-container">
-                    <input
-                        value={loginUsername}
-                        onChange={(e) => handelUsernameChange(e)}
-                        name="username"
-                        placeholder="Username"
-                    />
-                    <input
-                        value={loginPassword}
-                        onChange={(e) => handleChangePassword(e)}
-                        name="password"
-                        type="password"
-                        placeholder="Password"
-                    />
-                    <a href="#">Forgot Password?</a>
-                </div>
-                <button type="submit" className="login__button">
-                    Login
-                </button>
-                <div className="login-register-ask">
-                    <span className="login-register-ask__span ">Don't have an account?</span>
-                    <button
-                        onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            navigate('/register');
-                        }}
-                        className="login-register__button"
-                    >
-                        <FaArrowRight style={{ position: 'absolute', right: '10px', top: '15px' }} />
-                        Register
-                    </button>
-                </div>
-            </form>
-        </div>
+        <Stack
+            direction="column"
+            component="main"
+            sx={[
+                {
+                    justifyContent: 'center',
+                    height: 'calc((1 - var(--template-frame-height, 0)) * 100%)',
+                    marginTop: 'max(40px - var(--template-frame-height, 0px), 0px)',
+                    minHeight: '100%',
+                },
+                (theme) => ({
+                    '&::before': {
+                        content: '""',
+                        display: 'block',
+                        position: 'absolute',
+                        zIndex: -1,
+                        inset: 0,
+                        backgroundImage: 'radial-gradient(ellipse at 50% 50%, hsl(210, 100%, 97%), hsl(0, 0%, 100%))',
+                        backgroundRepeat: 'no-repeat',
+                        ...theme.applyStyles('dark', {
+                            backgroundImage:
+                                'radial-gradient(at 50% 50%, hsla(210, 100%, 16%, 0.5), hsl(220, 30%, 5%))',
+                        }),
+                    },
+                }),
+            ]}
+        >
+            <Stack
+                direction={{ xs: 'column-reverse', md: 'row' }}
+                sx={{
+                    justifyContent: 'center',
+                    gap: { xs: 6, sm: 12 },
+                    p: 2,
+                    mx: 'auto',
+                }}
+            >
+                <Stack
+                    direction={{ xs: 'column-reverse', md: 'row' }}
+                    sx={{
+                        justifyContent: 'center',
+                        gap: { xs: 6, sm: 12 },
+                        p: { xs: 2, sm: 4 },
+                        m: 'auto',
+                    }}
+                >
+                    <Content />
+                    <SignInCard />
+                </Stack>
+            </Stack>
+        </Stack>
     );
 }
-
-export default Login;

@@ -1,4 +1,11 @@
-import { CHANGE_CHAT_ROOM, GET_DATA_OTHER_USER, GET_DATA_USER, GET_MESSAGE_DATA, LOGGED } from './constant.context';
+import {
+    CHANGE_CHAT_ROOM,
+    GET_CHAT_DATA,
+    GET_DATA_OTHER_USER,
+    GET_DATA_USER,
+    GET_MESSAGE_DATA,
+    LOGGED,
+} from './constant.context';
 
 export const initState = {
     login: false,
@@ -35,11 +42,16 @@ export const reducer = (state, action) => {
             };
         }
 
-        case GET_MESSAGE_DATA:{
-            return{
+        case GET_MESSAGE_DATA: {
+            return {
                 ...state,
-                
-            }
+            };
+        }
+        case GET_CHAT_DATA: {
+            return {
+                ...state,
+                chatData: action.payload,
+            };
         }
         default: {
             console.log('Invalid Action');

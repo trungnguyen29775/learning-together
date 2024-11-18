@@ -58,7 +58,7 @@ function Home() {
     };
 
     const handleSendMessage = (e) => {
-        if (!e.shiftKey) {
+        if (!e.shiftKey && e.type != 'click') {
             if (e.key === 'Enter') {
                 let tempMessage = messageInput;
                 tempMessage.trim();
