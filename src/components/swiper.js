@@ -66,7 +66,16 @@ const TinderCards = () => {
             >
                 {profiles.map((profile) => (
                     <SwiperSlide key={profile.id}>
-                        <Card sx={{ maxWidth: 400, margin: 'auto' }}>
+                        <Card
+                            sx={{
+                                maxWidth: 400,
+                                margin: 'auto',
+                                overflowY: 'auto',
+                                '&:hover': {
+                                    cursor: 'pointer',
+                                },
+                            }}
+                        >
                             <CardMedia sx={{ height: 300 }} image={profile.imageUrl} title="green iguana" />
                             <CardContent>
                                 <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>

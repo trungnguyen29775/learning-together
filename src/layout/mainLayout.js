@@ -1,9 +1,9 @@
-import { Box } from '@mui/material';
-import TinderCards from '../components/swiper/swiper';
+import { Box, Card } from '@mui/material';
+import TinderCards from '../components/swiper';
 import { useContext, useEffect } from 'react';
 import StateContext from '../context/context.context';
 import { useNavigate } from 'react-router-dom';
-import Sidebar from '../components/sidebar/sidebar';
+import Sidebar from '../components/sidebar';
 
 const MainLayout = () => {
     const [state, dispatchState] = useContext(StateContext);

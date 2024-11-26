@@ -6,6 +6,7 @@ import Register from './pages/register/register';
 import { useContext, useEffect } from 'react';
 import StateContext from './context/context.context';
 import MainLayout from './layout/mainLayout';
+import Hobby from './components/hobby';
 
 function App() {
     const [state, dispatchState] = useContext(StateContext);
@@ -19,6 +20,7 @@ function App() {
             <Route path="/login" element={<Login navigation={navigator} />} />
             <Route path="/register" element={<Register />} />
             <Route path="/" element={<MainLayout />} />
+            <Route path="/hobby" element={<Hobby />} />
         </Routes>
     );
 }
