@@ -22,10 +22,11 @@ import { useState } from 'react';
 const Hobby = () => {
     const [sex, setSex] = useState('male');
     const [needs, setNeeds] = useState('findTutor');
+
     const [data, setData] = useState({
         favorite: [
             {
-                value: 'ltm',
+                value: 'music',
                 status: false,
                 label: 'Nghe nhạc',
             },
@@ -132,16 +133,29 @@ const Hobby = () => {
                 label: 'Giả tưởng',
             },
         ],
-        major: '',
-        school: '',
-        future: '',
-        slogan: '',
-        needs: '',
     });
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        console.log(e.target);
+        const { dob, school, major, slogan } = e.target;
+
+        if (!dob.value || !school.value || !major.value) {
+            alert('All fields are required!');
+            return;
+        }
+
+        const formData = {
+            dob: dob.value,
+            school: school.value,
+            needs,
+            major: major.value,
+            sex,
+            typeFilm: data.typeFilm.filter((item) => item.status),
+            favorite: data.favorite.filter((item) => item.status),
+            slogan: slogan.value,
+        };
+
+        console.log(formData);
     };
     const toggleTypeFilm = (index) => {
         const updatedFilms = [...data.typeFilm];
@@ -207,7 +221,7 @@ const Hobby = () => {
                             }}
                         >
                             <Typography>Ngày sinh:</Typography>
-                            <TextField id="dob" type="date" sx={{ width: 300, marginLeft: '10px' }} />
+                            <TextField required id="dob" type="date" sx={{ width: 300, marginLeft: '10px' }} />
                         </Box>
                         <Box
                             sx={{
@@ -230,6 +244,8 @@ const Hobby = () => {
                                 >
                                     <MenuItem value="male">Nam</MenuItem>
                                     <MenuItem value="female">Nữ</MenuItem>
+                                    <MenuItem value="ohter">Khác</MenuItem>
+                                    <MenuItem value="prefer_not_to_say">Chưa muốn tiết lộ</MenuItem>
                                 </Select>
                             </FormControl>
                         </Box>
@@ -244,7 +260,12 @@ const Hobby = () => {
                             }}
                         >
                             <Typography>Trường học hiện tại:</Typography>
-                            <TextField sx={{ flex: 1, marginLeft: '10px' }} id="school" label="Trường học hiện tại" />
+                            <TextField
+                                required
+                                sx={{ flex: 1, marginLeft: '10px' }}
+                                id="school"
+                                label="Trường học hiện tại"
+                            />
                         </Box>
 
                         <Box
@@ -258,6 +279,7 @@ const Hobby = () => {
                         >
                             <Typography>Chuyên ngành:</Typography>
                             <TextField
+                                required
                                 id="major"
                                 sx={{ marginLeft: '10px', flex: 1 }}
                                 label="Chuyên ngành (chuyên ngành mong muốn)"
@@ -322,7 +344,7 @@ const Hobby = () => {
                             display: 'flex',
                             flexDirection: 'row',
                             alignItems: 'center',
-                            margin: '15px 10px',
+                            margin: '20px 10px',
                         }}
                     >
                         <Typography>Mong muốn tìm kiếm bạn: </Typography>
@@ -341,7 +363,27 @@ const Hobby = () => {
                             </Select>
                         </FormControl>
                     </Box>
-                    <Box sx={{ width: '100%', display: 'flex', alignItems: 'center', marginTop: '20px' }}>
+
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            margin: '15px 10px',
+                            width: '100%',
+                        }}
+                    >
+                        <Typography>Giới thiệu về bản thân bạn {'(hoặc một câu slogan mà bạn tâm đắc):'}</Typography>
+                        <TextField id="slogan" sx={{ marginLeft: '10px', flex: 1, marginTop: '10px' }} label="Bio" />
+                    </Box>
+                    <Box
+                        sx={{
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            marginTop: '20px',
+                            marginBottom: '15px',
+                        }}
+                    >
                         <Button sx={{ width: '90%', margin: 'auto' }} variant="contained" type="submit">
                             Tiếp theo
                         </Button>
