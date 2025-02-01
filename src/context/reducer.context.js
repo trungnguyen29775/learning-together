@@ -1,15 +1,18 @@
 import {
     CHANGE_CHAT_ROOM,
+    CHANGE_COMPONENT,
     GET_CHAT_DATA,
     GET_DATA_OTHER_USER,
     GET_DATA_USER,
     GET_MESSAGE_DATA,
     LOGGED,
+    LOGGOUT,
 } from './constant.context';
 
 export const initState = {
     login: false,
     userData: {},
+    currentComponent: 'home',
 };
 
 export const reducer = (state, action) => {
@@ -20,6 +23,14 @@ export const reducer = (state, action) => {
                 login: true,
             };
         }
+
+        case CHANGE_COMPONENT: {
+            return {
+                ...state,
+                currentComponent: action.payload,
+            };
+        }
+
         case GET_DATA_USER: {
             return {
                 ...state,
@@ -51,6 +62,12 @@ export const reducer = (state, action) => {
             return {
                 ...state,
                 chatData: action.payload,
+            };
+        }
+
+        case LOGGOUT: {
+            return {
+                initState,
             };
         }
         default: {

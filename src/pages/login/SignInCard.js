@@ -15,6 +15,10 @@ import { styled } from '@mui/material/styles';
 
 import ForgotPassword from './ForgotPassword';
 import { GoogleIcon, FacebookIcon, SitemarkIcon } from './CustomIcons';
+import instance from '../../axios/instance';
+import { useNavigate } from 'react-router-dom';
+import StateContext from '../../context/context.context';
+import { getDataUser, logged } from '../../context/action.context';
 
 const Card = styled(MuiCard)(({ theme }) => ({
     display: 'flex',
@@ -38,7 +42,8 @@ export default function SignInCard() {
     const [passwordError, setPasswordError] = React.useState(false);
     const [passwordErrorMessage, setPasswordErrorMessage] = React.useState('');
     const [open, setOpen] = React.useState(false);
-
+    const navigate = useNavigate();
+    const [state, dispatchState] = React.useContext(StateContext);
     const handleClickOpen = () => {
         setOpen(true);
     };
@@ -48,15 +53,23 @@ export default function SignInCard() {
     };
 
     const handleSubmit = (event) => {
-        if (emailError || passwordError) {
-            event.preventDefault();
-            return;
-        }
+        event.preventDefault();
         const data = new FormData(event.currentTarget);
-        console.log({
-            email: data.get('email'),
-            password: data.get('password'),
-        });
+        instance
+            .post('/login', {
+                email: data.get('email'),
+                password: data.get('password'),
+            })
+            .then((res) => {
+                if (res.status === 200) {
+                    dispatchState(logged());
+                    dispatchState(getDataUser(res.data.userData));
+                    navigate('/');
+                }
+            })
+            .catch((err) => {
+                console.log(err);
+            });
     };
 
     const validateInputs = () => {

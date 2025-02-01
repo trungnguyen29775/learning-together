@@ -1,6 +1,5 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import './App.css';
-import Home from './pages/home/home';
 import Login from './pages/login/login';
 import Register from './pages/register/register';
 import { useContext, useEffect } from 'react';
@@ -10,9 +9,9 @@ import Hobby from './components/hobby';
 
 function App() {
     const [state, dispatchState] = useContext(StateContext);
-
+    const navigate = useNavigate();
     useEffect(() => {
-        console.log(state);
+        if (state.loggin === false) navigate('/login');
     }, [state]);
 
     return (

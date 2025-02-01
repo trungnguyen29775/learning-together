@@ -47,6 +47,15 @@ const TinderCards = () => {
         },
     ];
 
+    const images = [
+        'https://www.bing.com/th?id=OIP.S1QhrGnesF7vH4QYF9Ne8QHaHa&w=206&h=206&c=8&rs=1&qlt=90&o=6&dpr=1.3&pid=3.1&rm=2',
+        'https://www.bing.com/th?id=OIP.S1QhrGnesF7vH4QYF9Ne8QHaHa&w=206&h=206&c=8&rs=1&qlt=90&o=6&dpr=1.3&pid=3.1&rm=2',
+        'https://www.bing.com/th?id=OIP.S1QhrGnesF7vH4QYF9Ne8QHaHa&w=206&h=206&c=8&rs=1&qlt=90&o=6&dpr=1.3&pid=3.1&rm=2',
+        'https://www.bing.com/th?id=OIP.S1QhrGnesF7vH4QYF9Ne8QHaHa&w=206&h=206&c=8&rs=1&qlt=90&o=6&dpr=1.3&pid=3.1&rm=2',
+        'https://www.bing.com/th?id=OIP.S1QhrGnesF7vH4QYF9Ne8QHaHa&w=206&h=206&c=8&rs=1&qlt=90&o=6&dpr=1.3&pid=3.1&rm=2',
+        'https://www.bing.com/th?id=OIP.S1QhrGnesF7vH4QYF9Ne8QHaHa&w=206&h=206&c=8&rs=1&qlt=90&o=6&dpr=1.3&pid=3.1&rm=2',
+    ];
+
     return (
         <div
             className="tinderCards"
@@ -68,7 +77,7 @@ const TinderCards = () => {
                     <SwiperSlide key={profile.id}>
                         <Card
                             sx={{
-                                maxWidth: 400,
+                                maxWidth: 500,
                                 margin: 'auto',
                                 overflowY: 'auto',
                                 '&:hover': {
@@ -76,7 +85,7 @@ const TinderCards = () => {
                                 },
                             }}
                         >
-                            <CardMedia sx={{ height: 300 }} image={profile.imageUrl} title="green iguana" />
+                            <CardMedia sx={{ height: 400 }} image={profile.imageUrl} title="green iguana" />
                             <CardContent>
                                 <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
                                     <Typography gutterBottom variant="h5" component="div">
@@ -90,9 +99,15 @@ const TinderCards = () => {
                                     Slogan: {profile.slogan}
                                 </Typography>
                             </CardContent>
+                            {/* <CardContent>
+                                {images.map((item, index) => {
+                                    console.log('Hello');
+                                    return <CardMedia sx={{ height: 300 }} image={item} title="green iguana" />;
+                                })}
+                            </CardContent> */}
                             <CardActions>
-                                <Button size="small">Share</Button>
-                                <Button size="small">Learn More</Button>
+                                <Button size="small">Like</Button>
+                                <Button size="small">Don't Like</Button>
                             </CardActions>
                         </Card>
                     </SwiperSlide>

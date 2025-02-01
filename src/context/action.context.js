@@ -1,10 +1,12 @@
 import {
     CHANGE_CHAT_ROOM,
+    CHANGE_COMPONENT,
     GET_CHAT_DATA,
     GET_DATA_OTHER_USER,
     GET_DATA_USER,
     GET_MESSAGE_DATA,
     LOGGED,
+    LOGGOUT,
 } from './constant.context';
 
 export const logged = () => {
@@ -44,6 +46,20 @@ export const getMessageData = (payload) => {
 export const getChatData = (payload) => {
     return {
         type: GET_CHAT_DATA,
+        payload,
+    };
+};
+
+export const changeComponent = (payload) => {
+    return {
+        type: CHANGE_COMPONENT,
+        payload,
+    };
+};
+
+export const loggout = (payload) => {
+    return {
+        type: LOGGOUT,
         payload,
     };
 };

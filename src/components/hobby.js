@@ -17,12 +17,17 @@ import {
     TextField,
     Typography,
 } from '@mui/material';
-import { useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
+import instance from '../axios/instance';
+import StateContext from '../context/context.context';
+import { useNavigate } from 'react-router-dom';
+import { getDataUser } from '../context/action.context';
 
 const Hobby = () => {
     const [sex, setSex] = useState('male');
     const [needs, setNeeds] = useState('findTutor');
-
+    const [state, dispatchState] = useContext(StateContext);
+    const navigate = useNavigate();
     const [data, setData] = useState({
         favorite: [
             {
@@ -135,6 +140,10 @@ const Hobby = () => {
         ],
     });
 
+    useEffect(() => {
+        console.log(state);
+    }, [state]);
+
     const handleSubmit = (e) => {
         e.preventDefault();
         const { dob, school, major, slogan } = e.target;
@@ -150,12 +159,19 @@ const Hobby = () => {
             needs,
             major: major.value,
             sex,
-            typeFilm: data.typeFilm.filter((item) => item.status),
-            favorite: data.favorite.filter((item) => item.status),
+            typeFilm: data.typeFilm,
+            favorite: data.favorite,
             slogan: slogan.value,
         };
-
-        console.log(formData);
+        instance
+            .post('/update-hobby', { ...formData, email: state.userData.email })
+            .then((res) => {
+                dispatchState(getDataUser(res.data));
+                navigate('/');
+            })
+            .catch((err) => {
+                console.log(err);
+            });
     };
     const toggleTypeFilm = (index) => {
         const updatedFilms = [...data.typeFilm];

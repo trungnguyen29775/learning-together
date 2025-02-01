@@ -16,6 +16,8 @@ import { GoogleIcon, FacebookIcon, SitemarkIcon } from '../login/CustomIcons';
 import { ArrowBack } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import instance from '../../axios/instance';
+import StateContext from '../../context/context.context';
+import { getDataUser, logged } from '../../context/action.context';
 
 const Card = styled(MuiCard)(({ theme }) => ({
     display: 'flex',
@@ -62,7 +64,8 @@ export default function Register(props) {
     const [passwordErrorMessage, setPasswordErrorMessage] = React.useState('');
     const [nameError, setNameError] = React.useState(false);
     const [nameErrorMessage, setNameErrorMessage] = React.useState('');
-
+    const navigate = useNavigate();
+    const [state, dispatchState] = React.useContext(StateContext);
     const validateInputs = () => {
         const email = document.getElementById('email');
         const password = document.getElementById('password');
@@ -110,14 +113,16 @@ export default function Register(props) {
                 password: data.get('password'),
             })
             .then((res) => {
-                console.log(res.data);
+                if (res.status === 200) {
+                    dispatchState(logged());
+                    dispatchState(getDataUser({ name: data.get('name'), email: data.get('email') }));
+                    navigate('/hobby');
+                }
             })
             .catch((err) => {
                 console.log(err);
             });
     };
-
-    const navigate = useNavigate();
 
     return (
         <SignUpContainer direction="column" justifyContent="space-between">
