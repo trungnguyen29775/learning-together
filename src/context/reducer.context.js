@@ -1,3 +1,4 @@
+import { messageNotify } from './action.context';
 import {
     CHANGE_CHAT_ROOM,
     CHANGE_COMPONENT,
@@ -7,12 +8,14 @@ import {
     GET_MESSAGE_DATA,
     LOGGED,
     LOGGOUT,
+    MESSAGE_NOTIFY,
 } from './constant.context';
 
 export const initState = {
     login: false,
     userData: {},
     currentComponent: 'home',
+    messageNotify: 0,
 };
 
 export const reducer = (state, action) => {
@@ -70,6 +73,14 @@ export const reducer = (state, action) => {
                 initState,
             };
         }
+
+        case MESSAGE_NOTIFY: {
+            return {
+                ...state,
+                messageNotify: state.messageNotify + 1,
+            };
+        }
+
         default: {
             console.log('Invalid Action');
             return state;

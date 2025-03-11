@@ -1,48 +1,96 @@
 import React, { useState, useEffect, useContext } from 'react';
-import axios from 'axios';
 import { Box, Typography, List, ListItem, Avatar, TextField, IconButton, CircularProgress } from '@mui/material';
 import { Send } from '@mui/icons-material';
 import instance from '../axios/instance';
 import StateContext from '../context/context.context';
+import { socket } from '../socket';
 
 const Message = () => {
-    const [users, setUsers] = useState([]); // Danh sách người dùng từ API
-    const [selectedUser, setSelectedUser] = useState(null);
-    const [chatMessages, setChatMessages] = useState({});
+    const [users, setUsers] = useState([]); // Danh sách người dùng
+    const [selectedUser, setSelectedUser] = useState(null); // Người đang chat
+    const [selectedChatRoomId, setSelectedChatRoomId] = useState(null); // ID phòng chat
+    const [chatMessages, setChatMessages] = useState([]); // Tin nhắn trong phòng chat
     const [messageInput, setMessageInput] = useState('');
     const [loading, setLoading] = useState(true);
-    const [state, dispatchState] = useContext(StateContext);
+    const [sending, setSending] = useState(false);
+    const [state] = useContext(StateContext);
+
+    // Lấy danh sách người dùng có thể nhắn tin
     useEffect(() => {
         const fetchChatUsers = async () => {
             try {
                 const response = await instance.get(`/get-chat-feature/${state.userData.user_id}`);
-                console.log(response.data);
                 setUsers(response.data);
-                setSelectedUser(response.data[0]?.user_id || null);
+                if (response.data.length > 0) {
+                    handleSelectUser(response.data[0]);
+                }
             } catch (error) {
-                console.error('Error fetching chat users:', error);
+                console.error('Lỗi khi lấy danh sách người dùng:', error);
             } finally {
                 setLoading(false);
             }
         };
 
         fetchChatUsers();
-    }, []);
 
-    const handleSelectUser = (userId) => {
-        setSelectedUser(userId);
+        // Lắng nghe sự kiện nhận tin nhắn
+        socket.on('received-message', ({ senderId, message, chat_rooms_id }) => {
+            if (chat_rooms_id === selectedChatRoomId) {
+                setChatMessages((prev) => [...prev, { sender: senderId, content: message }]);
+            }
+        });
+
+        return () => {
+            socket.off('received-message');
+        };
+    }, [selectedChatRoomId]);
+
+    // Chọn người dùng để chat
+    const handleSelectUser = async (user) => {
+        if (!user.chat_rooms_id) {
+            console.warn('User does not have a chat_rooms_id.');
+            return;
+        }
+
+        setSelectedUser(user);
+        setSelectedChatRoomId(user.chat_rooms_id);
+        setChatMessages([]);
+        console.log(user);
+        try {
+            const response = await instance.get(`/get-messages-by-chat-room/${user.chat_rooms_id}`);
+            setChatMessages(response.data);
+        } catch (error) {
+            console.error('Lỗi khi lấy tin nhắn:', error);
+        }
     };
 
-    const handleSendMessage = () => {
-        if (!messageInput.trim() || !selectedUser) return;
-        const newMessage = { sender: 'self', text: messageInput };
+    // Gửi tin nhắn
+    const handleSendMessage = async () => {
+        if (!messageInput.trim() || !selectedChatRoomId || sending) return;
 
-        setChatMessages((prev) => ({
-            ...prev,
-            [selectedUser]: [...(prev[selectedUser] || []), newMessage],
-        }));
+        const newMessage = {
+            sender: state.userData.user_id,
+            content: messageInput,
+            chat_rooms_id: selectedChatRoomId,
+        };
 
-        setMessageInput('');
+        setSending(true);
+
+        try {
+            await instance.post('/create-message', newMessage);
+            setChatMessages((prev) => [...prev, newMessage]);
+            socket.emit('send-message', {
+                targetUserId: selectedUser.user_id,
+                message: messageInput,
+                senderId: state.userData.user_id,
+                chat_rooms_id: selectedChatRoomId,
+            });
+            setMessageInput('');
+        } catch (error) {
+            console.error('Lỗi khi gửi tin nhắn:', error);
+        } finally {
+            setSending(false);
+        }
     };
 
     return (
@@ -63,14 +111,21 @@ const Message = () => {
                                     display: 'flex',
                                     alignItems: 'center',
                                     padding: '10px',
-                                    bgcolor: selectedUser === user.user_id ? 'hsl(210deg 100% 95%)' : 'transparent',
+                                    bgcolor:
+                                        selectedUser?.user_id === user.user_id ? 'hsl(210deg 100% 95%)' : 'transparent',
                                     cursor: 'pointer',
                                     '&:hover': { bgcolor: 'lightgray' },
                                 }}
-                                onClick={() => handleSelectUser(user.user_id)}
+                                onClick={() => handleSelectUser(user)}
                             >
-                                <Avatar src={user.avatar} alt={user.username} />
-                                <Typography sx={{ marginLeft: '10px' }}>{user.username}</Typography>
+                                <Avatar
+                                    src={
+                                        user.avt_file_path ||
+                                        'https://encrypted-tbn3.gstatic.com/images?q=tbn:ANd9GcRa9QlrNDT8NNM4FHaxIYZszOl1y5h6jVnpK06DjySyIm5sEf4J'
+                                    }
+                                    alt={user.name}
+                                />
+                                <Typography sx={{ marginLeft: '10px' }}>{user.name}</Typography>
                             </ListItem>
                         ))}
                     </List>
@@ -88,35 +143,53 @@ const Message = () => {
                 }}
             >
                 {/* Tiêu đề phòng chat */}
-                <Box sx={{ padding: '10px', bgcolor: 'white', borderBottom: '1px solid lightgray' }}>
-                    <Typography variant="h6">
-                        {users.find((user) => user.user_id === selectedUser)?.username || 'Select a chat'}
-                    </Typography>
+                <Box
+                    sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '10px',
+                        bgcolor: 'white',
+                        borderBottom: '1px solid lightgray',
+                    }}
+                >
+                    {selectedUser ? (
+                        <>
+                            <Avatar
+                                src={
+                                    selectedUser.avt_file_path ||
+                                    'https://encrypted-tbn3.gstatic.com/images?q=tbn:ANd9GcRa9QlrNDT8NNM4FHaxIYZszOl1y5h6jVnpK06DjySyIm5sEf4J'
+                                }
+                                alt={selectedUser.name}
+                                sx={{ marginRight: '10px' }}
+                            />
+                            <Typography variant="h6">{selectedUser.name}</Typography>
+                        </>
+                    ) : (
+                        <Typography variant="h6">Chọn người để trò chuyện</Typography>
+                    )}
                 </Box>
 
-                {/* Tin nhắn */}
-                <Box sx={{ flexGrow: 1, padding: '10px', overflowY: 'auto', bgcolor: '#f9f9f9' }}>
-                    {chatMessages[selectedUser]?.map((msg, index) => (
+                {/* Danh sách tin nhắn */}
+                <Box sx={{ flex: 1, overflowY: 'auto', padding: '10px' }}>
+                    {chatMessages.map((msg, index) => (
                         <Box
                             key={index}
                             sx={{
                                 display: 'flex',
-                                justifyContent: msg.sender === 'self' ? 'flex-end' : 'flex-start',
-                                margin: '5px 0',
+                                justifyContent: msg.sender === state.userData.user_id ? 'flex-end' : 'flex-start',
                             }}
                         >
-                            <Box
+                            <Typography
                                 sx={{
-                                    maxWidth: '70%',
-                                    padding: '10px',
-                                    bgcolor: 'white',
-                                    color: 'black',
-                                    borderRadius: '10px',
-                                    boxShadow: '0 0 5px rgba(0,0,0,0.1)',
+                                    bgcolor: msg.sender === state.userData.user_id ? '#0084ff' : '#e5e5ea',
+                                    color: msg.sender === state.userData.user_id ? 'white' : 'black',
+                                    borderRadius: '8px',
+                                    padding: '8px',
+                                    margin: '5px',
                                 }}
                             >
-                                {msg.text}
-                            </Box>
+                                {msg.content}
+                            </Typography>
                         </Box>
                     ))}
                 </Box>
@@ -133,12 +206,13 @@ const Message = () => {
                 >
                     <TextField
                         fullWidth
-                        placeholder="Type a message..."
+                        variant="outlined"
+                        placeholder="Nhập tin nhắn..."
                         value={messageInput}
                         onChange={(e) => setMessageInput(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                     />
-                    <IconButton onClick={handleSendMessage}>
+                    <IconButton color="primary" onClick={handleSendMessage} disabled={sending}>
                         <Send />
                     </IconButton>
                 </Box>

@@ -7,6 +7,7 @@ import {
     GET_MESSAGE_DATA,
     LOGGED,
     LOGGOUT,
+    MESSAGE_NOTIFY,
 } from './constant.context';
 
 export const logged = () => {
@@ -60,6 +61,13 @@ export const changeComponent = (payload) => {
 export const loggout = (payload) => {
     return {
         type: LOGGOUT,
+        payload,
+    };
+};
+
+export const messageNotify = (payload) => {
+    return {
+        type: MESSAGE_NOTIFY,
         payload,
     };
 };

@@ -1,2 +1,3 @@
 import { io } from 'socket.io-client';
-export const socket = io.connect('http://localhost:5000',{ reconnection: false});
+import severURL from '../constant/severUrl';
+export const socket = io.connect(severURL, { reconnection: false });

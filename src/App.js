@@ -6,6 +6,7 @@ import { useContext, useEffect } from 'react';
 import StateContext from './context/context.context';
 import MainLayout from './layout/mainLayout';
 import Hobby from './components/hobby';
+import { socket } from './socket';
 
 function App() {
     const [state, dispatchState] = useContext(StateContext);
@@ -13,6 +14,9 @@ function App() {
     useEffect(() => {
         if (state.loggin === false) navigate('/login');
         console.log(state);
+        if (state.login === true) {
+            socket.emit('online', { user_id: state.userData.user_id });
+        }
     }, [state]);
 
     return (

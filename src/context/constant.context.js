@@ -7,3 +7,4 @@ export const ADD_MESSAGE_DATA = 'ADD_MESSAGE_DATA';
 export const GET_CHAT_DATA = 'GET_CHAT_DATA';
 export const CHANGE_COMPONENT = 'CHANGE_COMPONENT';
 export const LOGGOUT = 'LOGGOUT';
+export const MESSAGE_NOTIFY = 'MESSAGE_NOTIFY';
