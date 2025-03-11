@@ -113,9 +113,9 @@ export default function Register(props) {
                 password: data.get('password'),
             })
             .then((res) => {
-                if (res.status === 200) {
+                if (res.status === 201) {
                     dispatchState(logged());
-                    dispatchState(getDataUser({ name: data.get('name'), email: data.get('email') }));
+                    dispatchState(getDataUser(res.data.user));
                     navigate('/hobby');
                 }
             })

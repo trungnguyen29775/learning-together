@@ -164,7 +164,7 @@ const Hobby = () => {
             slogan: slogan.value,
         };
         instance
-            .post('/update-hobby', { ...formData, email: state.userData.email })
+            .post('/update-hobby', { ...formData, email: state.userData.email, user_id: state.userData.user_id })
             .then((res) => {
                 dispatchState(getDataUser(res.data));
                 navigate('/');

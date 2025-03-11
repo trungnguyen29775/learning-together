@@ -12,6 +12,7 @@ function App() {
     const navigate = useNavigate();
     useEffect(() => {
         if (state.loggin === false) navigate('/login');
+        console.log(state);
     }, [state]);
 
     return (

@@ -10,38 +10,67 @@ import {
     TextField,
     Typography,
 } from '@mui/material';
-import { useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
+import instance from '../axios/instance';
+import StateContext from '../context/context.context';
+
+// Danh sách sở thích và thể loại phim
+const hobbiesList = [
+    'anime',
+    'badminton',
+    'basketball',
+    'beach',
+    'eat',
+    'exercise',
+    'game',
+    'hiking',
+    'music',
+    'pets',
+    'pickelBall',
+    'reading',
+    'running',
+    'sing',
+    'travel',
+    'walking',
+];
+const movieGenresList = ['action', 'detective', 'fantasy', 'horror', 'romance'];
 
 const Profile = () => {
     const [profileData, setProfileData] = useState({
-        name: 'Nguyễn Vũ Quang Huy',
-        dob: '2024-12-12',
-        sex: 'male',
-        school: 'Thpt Hung Vuong',
-        major: 'Cong nghe thong tin',
-        slogan: 'Hello',
-        needs: 'findTutor',
-        favoriteHobbies: {
-            music: false,
-            game: true,
-            sing: true,
-            eat: true,
-            exercise: true,
-            running: true,
-            badminton: true,
-            walking: true,
-            basketball: true,
-            pets: true,
-        },
-        favoriteMovies: {
-            action: false,
-            anime: false,
-            detective: true,
-            fantasy: false,
-            horror: false,
-            romance: true,
-        },
+        name: '',
+        dob: '',
+        sex: '',
+        school: '',
+        major: '',
+        slogan: '',
+        needs: '',
+        favoriteHobbies: {},
+        favoriteMovies: {},
     });
+
+    const [state] = useContext(StateContext);
+
+    useEffect(() => {
+        if (state.userData) {
+            setProfileData({
+                name: state.userData.name || '',
+                dob: state.userData.dob ? state.userData.dob.split('T')[0] : '', // Chuyển đổi format ngày sinh
+                sex: state.userData.sex || '',
+                school: state.userData.school || '',
+                major: state.userData.major || '',
+                slogan: state.userData.slogan || '',
+                needs: state.userData.needs || '',
+                favoriteHobbies: hobbiesList.reduce((acc, hobby) => {
+                    acc[hobby] = !!state.userData[hobby]; // Chuyển thành boolean
+                    return acc;
+                }, {}),
+                favoriteMovies: movieGenresList.reduce((acc, genre) => {
+                    acc[genre] = !!state.userData[genre]; // Chuyển thành boolean
+                    return acc;
+                }, {}),
+            });
+        }
+    }, [state.userData]);
 
     const handleInputChange = (field, value) => {
         setProfileData({ ...profileData, [field]: value });
@@ -68,8 +97,15 @@ const Profile = () => {
     };
 
     const handleSubmit = () => {
-        console.log('Updated Profile Data:', profileData);
-        alert('Profile updated successfully!');
+        instance
+            .post('/update-profile', { email: state.userData.email, ...profileData })
+            .then(() => {
+                alert('Profile updated successfully!');
+            })
+            .catch((error) => {
+                console.error('Error updating profile:', error);
+                alert('Failed to update profile.');
+            });
     };
 
     return (
@@ -78,7 +114,6 @@ const Profile = () => {
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
-                height: '100%',
                 marginTop: '150px',
                 marginBottom: '50px',
             }}
@@ -100,16 +135,15 @@ const Profile = () => {
                         type="date"
                         value={profileData.dob}
                         onChange={(e) => handleInputChange('dob', e.target.value)}
-                        InputLabelProps={{ shrink: true }}
                     />
 
                     <FormControl>
                         <InputLabel id="sex">Giới Tính</InputLabel>
                         <Select
                             labelId="sex"
-                            label="Giới Tính"
                             value={profileData.sex}
                             onChange={(e) => handleInputChange('sex', e.target.value)}
+                            label="Giới tính"
                         >
                             <MenuItem value="male">Nam</MenuItem>
                             <MenuItem value="female">Nữ</MenuItem>
@@ -139,8 +173,8 @@ const Profile = () => {
                         <InputLabel id="needs">Nhu Cầu</InputLabel>
                         <Select
                             labelId="needs"
-                            label="Nhu Cầu"
                             value={profileData.needs}
+                            label="Nhu Cầu"
                             onChange={(e) => handleInputChange('needs', e.target.value)}
                         >
                             <MenuItem value="findTutor">Tìm người kèm môn</MenuItem>
@@ -162,10 +196,7 @@ const Profile = () => {
                                     fontSize: '15px',
                                     margin: '5px',
                                     backgroundColor: isActive ? 'hsl(210deg 100% 95%)' : '',
-                                    '&:hover': {
-                                        cursor: 'pointer',
-                                        backgroundColor: 'hsl(210deg 100% 95%)',
-                                    },
+                                    '&:hover': { cursor: 'pointer', backgroundColor: 'hsl(210deg 100% 95%)' },
                                 }}
                             />
                         ))}
@@ -184,17 +215,14 @@ const Profile = () => {
                                     fontSize: '15px',
                                     margin: '5px',
                                     backgroundColor: isActive ? 'hsl(210deg 100% 95%)' : '',
-                                    '&:hover': {
-                                        cursor: 'pointer',
-                                        backgroundColor: 'hsl(210deg 100% 95%)',
-                                    },
+                                    '&:hover': { cursor: 'pointer', backgroundColor: 'hsl(210deg 100% 95%)' },
                                 }}
                             />
                         ))}
                     </Box>
 
                     <Button variant="contained" color="primary" onClick={handleSubmit}>
-                        Lưu Thay Đổi
+                        Lưu Thông Tin
                     </Button>
                 </Box>
             </Card>

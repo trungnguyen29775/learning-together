@@ -1,91 +1,83 @@
-import React, { useState } from 'react';
-import { Box, Typography, List, ListItem, Avatar, TextField, IconButton } from '@mui/material';
+import React, { useState, useEffect, useContext } from 'react';
+import axios from 'axios';
+import { Box, Typography, List, ListItem, Avatar, TextField, IconButton, CircularProgress } from '@mui/material';
 import { Send } from '@mui/icons-material';
-
-const users = [
-    { id: 1, name: 'John Doe', avatar: 'https://i.pravatar.cc/150?img=1' },
-    { id: 2, name: 'Jane Smith', avatar: 'https://i.pravatar.cc/150?img=2' },
-    { id: 3, name: 'Alice Brown', avatar: 'https://i.pravatar.cc/150?img=3' },
-];
-
-const messages = {
-    1: [
-        { sender: 'self', text: 'Hi John!' },
-        { sender: 'John Doe', text: 'Hello!' },
-    ],
-    2: [
-        { sender: 'self', text: 'Hey Jane!' },
-        { sender: 'Jane Smith', text: 'Hi there!' },
-    ],
-    3: [
-        { sender: 'self', text: 'Hello Alice!' },
-        { sender: 'Alice Brown', text: 'Hey!' },
-    ],
-};
+import instance from '../axios/instance';
+import StateContext from '../context/context.context';
 
 const Message = () => {
-    const [selectedUser, setSelectedUser] = useState(users[0].id); // Default: First user
-    const [chatMessages, setChatMessages] = useState(messages);
+    const [users, setUsers] = useState([]); // Danh sách người dùng từ API
+    const [selectedUser, setSelectedUser] = useState(null);
+    const [chatMessages, setChatMessages] = useState({});
     const [messageInput, setMessageInput] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [state, dispatchState] = useContext(StateContext);
+    useEffect(() => {
+        const fetchChatUsers = async () => {
+            try {
+                const response = await instance.get(`/get-chat-feature/${state.userData.user_id}`);
+                console.log(response.data);
+                setUsers(response.data);
+                setSelectedUser(response.data[0]?.user_id || null);
+            } catch (error) {
+                console.error('Error fetching chat users:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchChatUsers();
+    }, []);
 
     const handleSelectUser = (userId) => {
         setSelectedUser(userId);
     };
 
     const handleSendMessage = () => {
-        if (!messageInput.trim()) return;
+        if (!messageInput.trim() || !selectedUser) return;
         const newMessage = { sender: 'self', text: messageInput };
-        setChatMessages({
-            ...chatMessages,
-            [selectedUser]: [...(chatMessages[selectedUser] || []), newMessage],
-        });
-        setMessageInput(''); // Clear input
+
+        setChatMessages((prev) => ({
+            ...prev,
+            [selectedUser]: [...(prev[selectedUser] || []), newMessage],
+        }));
+
+        setMessageInput('');
     };
 
     return (
-        <Box
-            sx={{
-                display: 'flex',
-                height: '100%',
-                bgcolor: 'whitesmoke',
-                width: '100%',
-                height: '100%',
-            }}
-        >
-            <Box
-                sx={{
-                    width: '25%',
-                    bgcolor: 'white',
-                    borderRight: '1px solid lightgray',
-                    overflowY: 'auto',
-                }}
-            >
+        <Box sx={{ display: 'flex', height: '100vh', bgcolor: 'whitesmoke' }}>
+            {/* Danh sách liên hệ */}
+            <Box sx={{ width: '25%', bgcolor: 'white', borderRight: '1px solid lightgray', overflowY: 'auto' }}>
                 <Typography variant="h6" sx={{ padding: '10px', fontWeight: 'bold' }}>
                     Contacts
                 </Typography>
-                <List>
-                    {users.map((user) => (
-                        <ListItem
-                            key={user.id}
-                            sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                padding: '10px',
-                                bgcolor: selectedUser === user.id ? 'hsl(210deg 100% 95%)' : 'transparent',
-                                cursor: 'pointer',
-                                '&:hover': {
-                                    bgcolor: 'lightgray',
-                                },
-                            }}
-                            onClick={() => handleSelectUser(user.id)}
-                        >
-                            <Avatar src={user.avatar} alt={user.name} />
-                            <Typography sx={{ marginLeft: '10px' }}>{user.name}</Typography>
-                        </ListItem>
-                    ))}
-                </List>
+                {loading ? (
+                    <CircularProgress sx={{ margin: '20px auto', display: 'block' }} />
+                ) : (
+                    <List>
+                        {users.map((user) => (
+                            <ListItem
+                                key={user.user_id}
+                                sx={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    padding: '10px',
+                                    bgcolor: selectedUser === user.user_id ? 'hsl(210deg 100% 95%)' : 'transparent',
+                                    cursor: 'pointer',
+                                    '&:hover': { bgcolor: 'lightgray' },
+                                }}
+                                onClick={() => handleSelectUser(user.user_id)}
+                            >
+                                <Avatar src={user.avatar} alt={user.username} />
+                                <Typography sx={{ marginLeft: '10px' }}>{user.username}</Typography>
+                            </ListItem>
+                        ))}
+                    </List>
+                )}
             </Box>
 
+            {/* Khu vực chat */}
             <Box
                 sx={{
                     width: '75%',
@@ -95,25 +87,15 @@ const Message = () => {
                     flex: 1,
                 }}
             >
-                <Box
-                    sx={{
-                        padding: '10px',
-                        bgcolor: 'white',
-                        borderBottom: '1px solid lightgray',
-                        width: '100%',
-                    }}
-                >
-                    <Typography variant="h6">{users.find((user) => user.id === selectedUser)?.name}</Typography>
+                {/* Tiêu đề phòng chat */}
+                <Box sx={{ padding: '10px', bgcolor: 'white', borderBottom: '1px solid lightgray' }}>
+                    <Typography variant="h6">
+                        {users.find((user) => user.user_id === selectedUser)?.username || 'Select a chat'}
+                    </Typography>
                 </Box>
 
-                <Box
-                    sx={{
-                        flexGrow: 1,
-                        padding: '10px',
-                        overflowY: 'auto',
-                        bgcolor: '#f9f9f9',
-                    }}
-                >
+                {/* Tin nhắn */}
+                <Box sx={{ flexGrow: 1, padding: '10px', overflowY: 'auto', bgcolor: '#f9f9f9' }}>
                     {chatMessages[selectedUser]?.map((msg, index) => (
                         <Box
                             key={index}
@@ -139,6 +121,7 @@ const Message = () => {
                     ))}
                 </Box>
 
+                {/* Ô nhập tin nhắn */}
                 <Box
                     sx={{
                         display: 'flex',

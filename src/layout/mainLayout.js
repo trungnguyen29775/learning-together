@@ -8,9 +8,11 @@ import Profile from '../components/profile';
 import Message from '../components/message';
 import Notification from '../components/notification';
 import Setting from '../components/setting';
+import instance from '../axios/instance';
 
 const MainLayout = () => {
     const [state, dispatchState] = useContext(StateContext);
+
     const notifications = [
         { avatarSrc: '/path/to/avatar1.jpg', username: 'Alice', content: 'Alice nhắn tin cho bạn.' },
         { avatarSrc: '/path/to/avatar2.jpg', username: 'Bob', content: 'Bob đã được ghép đôi với bạn.' },
@@ -29,7 +31,7 @@ const MainLayout = () => {
                 <Sidebar />
             </Box>
             {state.currentComponent === 'home' ? (
-                <Box sx={{ height: '100%', minWidth: '60%', maxWidth: '80%' }}>
+                <Box sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
                     <TinderCards />
                 </Box>
             ) : state.currentComponent === 'message' ? (
