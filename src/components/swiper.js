@@ -113,11 +113,29 @@ const TinderCards = () => {
                     });
                 });
         } else {
-            setSnackbar({
-                open: true,
-                message: 'Bạn đã bỏ qua người này ❌',
-                severity: 'error',
-            });
+            instance
+                .post('/create-friendship', {
+                    user_id: state.userData.user_id,
+                    friend_id: profiles[currentIndex].user_id,
+                    status: 'skipped',
+                })
+                .then((res) => {
+                    if (res.status === 201) {
+                        setSnackbar({
+                            open: true,
+                            message: 'Bạn đã bỏ qua người này ❌',
+                            severity: 'error',
+                        });
+                    }
+                })
+                .catch((err) => {
+                    console.log(err);
+                    setSnackbar({
+                        open: true,
+                        message: 'Đã xảy ra lỗi, vui lòng thử lại!',
+                        severity: 'error',
+                    });
+                });
         }
 
         setTimeout(() => {

@@ -40,6 +40,7 @@ const Sidebar = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
+                borderRight: '2px solid #e6f2ff',
             }}
         >
             <Box sx={{ height: '70%' }}>

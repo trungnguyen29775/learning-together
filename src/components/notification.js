@@ -14,6 +14,7 @@ const Notification = ({ avatarSrc, username, notificationContent }) => {
                 '&:hover': {
                     backgroundColor: '#f5f5f5',
                 },
+                marginTop: '8px',
             }}
         >
             <Avatar src={avatarSrc} alt={username} sx={{ marginRight: '10px' }} />

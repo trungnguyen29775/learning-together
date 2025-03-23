@@ -8,7 +8,8 @@ import {
     GET_MESSAGE_DATA,
     LOGGED,
     LOGGOUT,
-    MESSAGE_NOTIFY,
+    ADD_NOTIFY,
+    READ_NOTIFY,
 } from './constant.context';
 
 export const initState = {
@@ -16,6 +17,7 @@ export const initState = {
     userData: {},
     currentComponent: 'home',
     messageNotify: 0,
+    notify: [],
 };
 
 export const reducer = (state, action) => {
@@ -69,17 +71,28 @@ export const reducer = (state, action) => {
         }
 
         case LOGGOUT: {
-            return {
-                initState,
-            };
+            return initState;
         }
 
-        case MESSAGE_NOTIFY: {
+        case ADD_NOTIFY: {
             return {
                 ...state,
                 messageNotify: state.messageNotify + 1,
             };
         }
+
+        case ADD_NOTIFY: {
+            return {
+                ...state,
+                notify: [...state.notify, action.payload],
+            };
+        }
+
+        // case READ_NOTIFY:
+        //     {
+        //         const temp = state.notify
+        //         tem
+        //     }
 
         default: {
             console.log('Invalid Action');

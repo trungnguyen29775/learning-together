@@ -12,6 +12,7 @@
     --border-color: #b0c1d9;
     --highlight-color: #80f2f2;
     font-family: 'montserrat';
+    overflow: hidden;
 }
 
 .App {
