@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { Box, Avatar, Typography } from '@mui/material';
 import PropTypes from 'prop-types';
+import instance from '../axios/instance';
+import StateContext from '../context/context.context';
 
-const Notification = ({ avatarSrc, username, notificationContent }) => {
+const Notification = ({ avatarSrc, notificationContent }) => {
     return (
         <Box
             sx={{
@@ -17,14 +19,14 @@ const Notification = ({ avatarSrc, username, notificationContent }) => {
                 marginTop: '8px',
             }}
         >
-            <Avatar src={avatarSrc} alt={username} sx={{ marginRight: '10px' }} />
+            <Avatar src={avatarSrc} alt={''} sx={{ marginRight: '10px' }} />
             <Box>
                 <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                    {username}
-                </Typography>
-                <Typography variant="body2" color="textSecondary">
                     {notificationContent}
                 </Typography>
+                {/* <Typography variant="body2" color="textSecondary">
+                    {notificationContent}
+                </Typography> */}
             </Box>
         </Box>
     );

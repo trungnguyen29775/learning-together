@@ -1,6 +1,6 @@
 import { Box, Card } from '@mui/material';
 import TinderCards from '../components/swiper';
-import { useContext, useEffect } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import StateContext from '../context/context.context';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/sidebar';
@@ -12,12 +12,20 @@ import instance from '../axios/instance';
 
 const MainLayout = () => {
     const [state, dispatchState] = useContext(StateContext);
+    const [notifications, setNotifications] = useState([]);
+    useEffect(() => {
+        if (state.login) {
+            instance
+                .get(`/get-notification-by-user/${state.userData.user_id}`)
+                .then((res) => {
+                    console.log(res.data);
+                })
+                .catch((err) => {
+                    console.log(err);
+                });
+        }
+    }, [state]);
 
-    const notifications = [
-        { avatarSrc: '/path/to/avatar1.jpg', username: 'Alice', content: 'Alice nhắn tin cho bạn.' },
-        { avatarSrc: '/path/to/avatar2.jpg', username: 'Bob', content: 'Bob đã được ghép đôi với bạn.' },
-        { avatarSrc: '/path/to/avatar3.jpg', username: 'Charlie', content: 'Charlie đã theo dõi bạn.' },
-    ];
     const navigate = useNavigate();
     useEffect(() => {
         if (state.login === false) {
@@ -40,12 +48,12 @@ const MainLayout = () => {
                 </Box>
             ) : state.currentComponent === 'notification' ? (
                 <Box sx={{ height: '100%', flex: 1, overflow: 'auto' }}>
-                    {notifications.map((notification, index) => (
+                    {notifications?.map((notification, index) => (
                         <Notification
                             key={index}
-                            avatarSrc={notification.avatarSrc}
-                            username={notification.username}
-                            notificationContent={notification.content}
+                            avatarSrc={notification.img_path ? notification.img_path : ''}
+                            // username={notification.status}
+                            notificationContent={notification.text}
                         />
                     ))}
                 </Box>

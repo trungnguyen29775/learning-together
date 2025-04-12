@@ -68,16 +68,18 @@ const TinderCards = () => {
     }
 
     useEffect(() => {
-        instance
-            .post('/get-all-user', { user_id: state.userData.user_id })
-            .then((res) => {
-                console.log(res.data);
-                setProfiles(res.data);
-            })
-            .catch((err) => {
-                console.error('Error fetching profiles:', err);
-                setError('Failed to load profiles');
-            });
+        if (state.login) {
+            instance
+                .post('/get-all-user', { user_id: state.userData.user_id })
+                .then((res) => {
+                    console.log(res.data);
+                    setProfiles(res.data);
+                })
+                .catch((err) => {
+                    console.error('Error fetching profiles:', err);
+                    setError('Failed to load profiles');
+                });
+        }
     }, [state.userData.user_id]);
 
     const handleAction = (type) => {
@@ -95,6 +97,17 @@ const TinderCards = () => {
                             open: true,
                             message: '🎉 Chúc mừng, hai bạn đã match với nhau! 🎉',
                             severity: 'success',
+                        });
+                        instance.post('/create-notification', {
+                            type: 'matched',
+                            data: {
+                                user_id: state.userData.user_id,
+                                friend_id: profiles[currentIndex].user_id,
+                                currentName: state.userData.name,
+                                targetName: profiles[currentIndex].name,
+                                currentAvtFilePath: state.userData.avt_file_path,
+                                targetAvtFilePath: profiles[currentIndex].avt_file_path,
+                            },
                         });
                     } else if (res.status === 201) {
                         setSnackbar({

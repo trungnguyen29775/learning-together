@@ -1,6 +1,19 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
-import { Box, Typography, List, ListItem, Avatar, TextField, IconButton, CircularProgress } from '@mui/material';
-import { Send } from '@mui/icons-material';
+import {
+    Box,
+    Typography,
+    List,
+    ListItem,
+    Avatar,
+    TextField,
+    IconButton,
+    CircularProgress,
+    Menu,
+    MenuItem,
+    Snackbar,
+    Alert,
+} from '@mui/material';
+import { Send, Call, Videocam, Info, MoreVert } from '@mui/icons-material';
 import instance from '../axios/instance';
 import StateContext from '../context/context.context';
 import { socket } from '../socket';
@@ -15,6 +28,11 @@ const Message = () => {
     const [sending, setSending] = useState(false);
     const [state] = useContext(StateContext);
     const messagesEndRef = useRef(null); // Tham chiếu đến phần tử cuối cùng
+    const [anchorEl, setAnchorEl] = useState(null); // State để quản lý vị trí của menu
+    const open = Boolean(anchorEl); // Kiểm tra xem menu có đang mở không
+    const [snackbarOpen, setSnackbarOpen] = useState(false); // State để quản lý Snackbar
+    const [snackbarMessage, setSnackbarMessage] = useState(''); // Thông báo của Snackbar
+    const [snackbarSeverity, setSnackbarSeverity] = useState('info'); // Mức độ nghiêm trọng của thông báo
 
     // Tự động cuộn xuống cuối khi có tin nhắn mới
     useEffect(() => {
@@ -22,6 +40,82 @@ const Message = () => {
             messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
         }
     }, [chatMessages]);
+
+    // Hàm mở menu
+    const handleMenuOpen = (event) => {
+        setAnchorEl(event.currentTarget);
+    };
+
+    // Hàm đóng menu
+    const handleMenuClose = () => {
+        setAnchorEl(null);
+    };
+
+    // Hàm mở Snackbar
+    const handleSnackbarOpen = (message, severity) => {
+        setSnackbarMessage(message);
+        setSnackbarSeverity(severity);
+        setSnackbarOpen(true);
+    };
+
+    // Hàm đóng Snackbar
+    const handleSnackbarClose = () => {
+        setSnackbarOpen(false);
+    };
+
+    // Hàm xử lý khi chọn một mục trong menu
+    const handleMenuAction = (action) => {
+        const type = action;
+        console.log(selectedUser, state);
+
+        switch (type) {
+            case 'unmatch': {
+                instance
+                    .delete('/delete-friendship', {
+                        data: {
+                            currentUserId: state.userData.user_id,
+                            targetUserId: selectedUser.user_id,
+                            chat_rooms_id: selectedUser.chat_rooms_id,
+                        },
+                    })
+                    .then((res) => {
+                        console.log(res.data);
+
+                        // Cập nhật danh sách users
+                        const updatedUsers = users.filter((user) => user.user_id !== selectedUser.user_id);
+                        setUsers(updatedUsers);
+
+                        // Đặt lại selectedUser nếu người dùng đã unmatch là selectedUser hiện tại
+                        if (selectedUser && selectedUser.user_id === state.userData.user_id) {
+                            setSelectedUser(null);
+                            setSelectedChatRoomId(null);
+                            setChatMessages([]);
+                        }
+
+                        // Nếu danh sách users còn người dùng, chọn người dùng đầu tiên
+                        if (updatedUsers.length > 0) {
+                            handleSelectUser(updatedUsers[0]);
+                        } else {
+                            setSelectedUser(null);
+                            setSelectedChatRoomId(null);
+                            setChatMessages([]);
+                        }
+
+                        // Hiển thị thông báo unmatch thành công
+                        handleSnackbarOpen('Unmatch thành công!', 'success');
+                    })
+                    .catch((err) => {
+                        console.log(err);
+                        // Hiển thị thông báo lỗi nếu có
+                        handleSnackbarOpen('Có lỗi xảy ra khi unmatch!', 'error');
+                    });
+                break;
+            }
+            default:
+                break;
+        }
+        handleMenuClose();
+    };
 
     useEffect(() => {
         const fetchChatUsers = async () => {
@@ -43,17 +137,19 @@ const Message = () => {
 
     // Lắng nghe tin nhắn mới
     useEffect(() => {
-        const handleReceivedMessage = ({ senderId, message, chat_rooms_id }) => {
-            if (chat_rooms_id === selectedChatRoomId) {
-                setChatMessages((prev) => [...prev, { sender: senderId, content: message }]);
-            }
-        };
+        if (state.login) {
+            const handleReceivedMessage = ({ senderId, message, chat_rooms_id }) => {
+                if (chat_rooms_id === selectedChatRoomId) {
+                    setChatMessages((prev) => [...prev, { sender: senderId, content: message }]);
+                }
+            };
 
-        socket.on('received-message', handleReceivedMessage);
+            socket.on('received-message', handleReceivedMessage);
 
-        return () => {
-            socket.off('received-message', handleReceivedMessage);
-        };
+            return () => {
+                socket.off('received-message', handleReceivedMessage);
+            };
+        }
     }, [selectedChatRoomId]);
 
     // Chọn người dùng để chat
@@ -212,17 +308,82 @@ const Message = () => {
                     }}
                 >
                     {selectedUser ? (
-                        <>
-                            <Avatar
-                                src={
-                                    selectedUser.avt_file_path ||
-                                    'https://encrypted-tbn3.gstatic.com/images?q=tbn:ANd9GcRa9QlrNDT8NNM4FHaxIYZszOl1y5h6jVnpK06DjySyIm5sEf4J'
-                                }
-                                alt={selectedUser.name}
-                                sx={{ marginRight: '10px', border: '2px solid #0084ff' }}
-                            />
-                            <Typography variant="h6">{selectedUser.name}</Typography>
-                        </>
+                        <Box
+                            sx={{
+                                display: 'flex',
+                                flexDirection: 'row',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                width: '100%',
+                                height: '100%',
+                            }}
+                        >
+                            <Box
+                                sx={{
+                                    display: 'flex',
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    height: '100%',
+                                }}
+                            >
+                                <Avatar
+                                    src={
+                                        selectedUser.avt_file_path ||
+                                        'https://encrypted-tbn3.gstatic.com/images?q=tbn:ANd9GcRa9QlrNDT8NNM4FHaxIYZszOl1y5h6jVnpK06DjySyIm5sEf4J'
+                                    }
+                                    alt={selectedUser.name}
+                                    sx={{ marginRight: '10px', border: '2px solid #0084ff' }}
+                                />
+                                <Typography variant="h6">{selectedUser.name}</Typography>
+                            </Box>
+
+                            <Box
+                                sx={{
+                                    display: 'flex',
+                                    flexDirection: 'row',
+                                    justifyContent: 'space-around',
+                                    alignItems: 'center',
+                                    height: '100%',
+                                }}
+                            >
+                                {/* Icon Call */}
+                                <IconButton
+                                    color="primary"
+                                    aria-label="Call"
+                                    onClick={() => console.log('Call clicked')}
+                                >
+                                    <Call />
+                                </IconButton>
+
+                                {/* Icon Call Video */}
+                                <IconButton
+                                    color="primary"
+                                    aria-label="Call Video"
+                                    onClick={() => console.log('Call Video clicked')}
+                                >
+                                    <Videocam />
+                                </IconButton>
+
+                                {/* Icon Info */}
+                                <IconButton
+                                    color="primary"
+                                    aria-label="Info"
+                                    onClick={() => console.log('Info clicked')}
+                                >
+                                    <Info />
+                                </IconButton>
+
+                                <IconButton color="primary" aria-label="More" onClick={handleMenuOpen}>
+                                    <MoreVert />
+                                </IconButton>
+
+                                <Menu anchorEl={anchorEl} open={open} onClose={handleMenuClose} sx={{ width: '500px' }}>
+                                    <MenuItem onClick={() => handleMenuAction('report')}>Báo cáo</MenuItem>
+                                    <MenuItem onClick={() => handleMenuAction('block')}>Chặn</MenuItem>
+                                    <MenuItem onClick={() => handleMenuAction('unmatch')}>Unmatch</MenuItem>
+                                </Menu>
+                            </Box>
+                        </Box>
                     ) : (
                         <Typography variant="h6">Chọn người để trò chuyện</Typography>
                     )}
@@ -305,6 +466,13 @@ const Message = () => {
                     </IconButton>
                 </Box>
             </Box>
+
+            {/* Snackbar để hiển thị thông báo */}
+            <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={handleSnackbarClose}>
+                <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
+                    {snackbarMessage}
+                </Alert>
+            </Snackbar>
         </Box>
     );
 };
