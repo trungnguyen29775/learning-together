@@ -19,6 +19,7 @@ const MainLayout = () => {
                 .get(`/get-notification-by-user/${state.userData.user_id}`)
                 .then((res) => {
                     console.log(res.data);
+                    setNotifications(res.data);
                 })
                 .catch((err) => {
                     console.log(err);
@@ -47,7 +48,7 @@ const MainLayout = () => {
                     <Message />
                 </Box>
             ) : state.currentComponent === 'notification' ? (
-                <Box sx={{ height: '100%', flex: 1, overflow: 'auto' }}>
+                <Box sx={{ height: '100vh', flex: 1, overflow: 'auto', marginTop: '18px' }}>
                     {notifications?.map((notification, index) => (
                         <Notification
                             key={index}

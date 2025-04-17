@@ -7,17 +7,18 @@ import StateContext from './context/context.context';
 import MainLayout from './layout/mainLayout';
 import Hobby from './components/hobby';
 import { socket } from './socket';
+import ImageUploadPage from './components/imageUploadPage';
 
 function App() {
     const [state, dispatchState] = useContext(StateContext);
     const navigate = useNavigate();
-    useEffect(() => {
-        if (state.loggin === false) navigate('/login');
-        console.log(state);
-        if (state.login === true) {
-            socket.emit('online', { user_id: state.userData.user_id });
-        }
-    }, [state]);
+    // useEffect(() => {
+    //     if (state.loggin === false) navigate('/login');
+    //     console.log(state);
+    //     if (state.login === true) {
+    //         socket.emit('online', { user_id: state.userData.user_id });
+    //     }
+    // }, [state]);
 
     return (
         <Routes>
@@ -25,6 +26,7 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/" element={<MainLayout />} />
             <Route path="/hobby" element={<Hobby />} />
+            <Route path="/up-load-image" element={<ImageUploadPage />} />
         </Routes>
     );
 }

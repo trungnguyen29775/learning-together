@@ -24,9 +24,6 @@ const Notification = ({ avatarSrc, notificationContent }) => {
                 <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
                     {notificationContent}
                 </Typography>
-                {/* <Typography variant="body2" color="textSecondary">
-                    {notificationContent}
-                </Typography> */}
             </Box>
         </Box>
     );

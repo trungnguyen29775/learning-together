@@ -77,7 +77,7 @@ const Sidebar = () => {
             </Box>
             <Divider />
             <Box sx={{ height: '30%' }}>
-                <List sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                <List sx={{ display: 'flex', flexDirection: 'column', height: '100%', paddingBottom: 0 }}>
                     <ListItem
                         id="setting"
                         onClick={handleChangeComponent}
