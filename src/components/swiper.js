@@ -4,16 +4,19 @@ import CardContent from '@mui/material/CardContent';
 import CardMedia from '@mui/material/CardMedia';
 import Typography from '@mui/material/Typography';
 import Chip from '@mui/material/Chip';
-import { Box, Snackbar, Alert, Button } from '@mui/material';
+import { Box, Snackbar, Alert, Button, IconButton } from '@mui/material';
 import StateContext from '../context/context.context';
 import instance from '../axios/instance';
 import { motion } from 'framer-motion';
+import { Star, NavigateBefore, NavigateNext } from '@mui/icons-material';
 
 const TinderCards = () => {
     const [state] = useContext(StateContext);
     const [profiles, setProfiles] = useState([]);
+    const [userImages, setUserImages] = useState({});
     const [error, setError] = useState(null);
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
     const [animate, setAnimate] = useState({ x: 0, opacity: 1 });
 
@@ -33,7 +36,7 @@ const TinderCards = () => {
 
     function processProfileData(profile) {
         if (!profile) return [];
-
+        console.log(profile);
         const hobbies = Object.keys(profile).filter(
             (key) =>
                 [
@@ -69,18 +72,56 @@ const TinderCards = () => {
 
     useEffect(() => {
         if (state.login) {
+            // Load all user profiles
             instance
                 .post('/get-all-user', { user_id: state.userData.user_id })
                 .then((res) => {
-                    console.log(res.data);
                     setProfiles(res.data);
+
+                    // Load images for each user
+                    const imagePromises = res.data.map((profile) =>
+                        instance
+                            .get(`/user-image/get-user-images/${profile.user_id}`)
+                            .then((response) => ({
+                                user_id: profile.user_id,
+                                images: response.data,
+                            }))
+                            .catch(() => ({
+                                user_id: profile.user_id,
+                                images: [],
+                            })),
+                    );
+
+                    Promise.all(imagePromises).then((results) => {
+                        const imagesMap = {};
+                        results.forEach((result) => {
+                            imagesMap[result.user_id] = result.images;
+                        });
+                        setUserImages(imagesMap);
+                    });
                 })
                 .catch((err) => {
                     console.error('Error fetching profiles:', err);
                     setError('Failed to load profiles');
                 });
         }
-    }, [state.userData.user_id]);
+    }, [state.userData.user_id, state.login]);
+
+    const handleNextImage = () => {
+        const currentProfile = profiles[currentIndex];
+        const images = userImages[currentProfile?.user_id] || [];
+        if (images.length > 0) {
+            setCurrentImageIndex((prev) => (prev + 1) % images.length);
+        }
+    };
+
+    const handlePrevImage = () => {
+        const currentProfile = profiles[currentIndex];
+        const images = userImages[currentProfile?.user_id] || [];
+        if (images.length > 0) {
+            setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+        }
+    };
 
     const handleAction = (type) => {
         setAnimate({ x: type === 'like' ? 300 : -300, opacity: 0 });
@@ -154,9 +195,42 @@ const TinderCards = () => {
         setTimeout(() => {
             if (currentIndex <= profiles.length - 1) {
                 setCurrentIndex(currentIndex + 1);
+                setCurrentImageIndex(0); // Reset image index when moving to next profile
                 setAnimate({ x: 0, opacity: 1 });
             }
         }, 500);
+    };
+
+    const getCurrentImage = () => {
+        if (!profiles[currentIndex]) return null;
+
+        const currentProfile = profiles[currentIndex];
+        const images = userImages[currentProfile.user_id] || [];
+
+        // If user has uploaded images
+        if (images.length > 0) {
+            const currentImage = images[currentImageIndex] || images.find((img) => img.is_featured) || images[0];
+            return currentImage?.path;
+        }
+
+        // Fallback to avatar or default image
+        return (
+            currentProfile.avt_file_path ||
+            'https://encrypted-tbn3.gstatic.com/images?q=tbn:ANd9GcRa9QlrNDT8NNM4FHaxIYZszOl1y5h6jVnpK06DjySyIm5sEf4J'
+        );
+    };
+
+    const getCurrentProfileImagesCount = () => {
+        const currentProfile = profiles[currentIndex];
+        if (!currentProfile) return 0;
+        return userImages[currentProfile.user_id]?.length || 0;
+    };
+
+    const isCurrentImageFeatured = () => {
+        const currentProfile = profiles[currentIndex];
+        if (!currentProfile) return false;
+        const images = userImages[currentProfile.user_id] || [];
+        return images[currentImageIndex]?.is_featured || false;
     };
 
     return (
@@ -185,14 +259,91 @@ const TinderCards = () => {
                             marginTop: '114px',
                         }}
                     >
-                        <CardMedia
-                            sx={{ height: 400 }}
-                            image={
-                                profiles[currentIndex]?.avt_file_path ||
-                                'https://encrypted-tbn3.gstatic.com/images?q=tbn:ANd9GcRa9QlrNDT8NNM4FHaxIYZszOl1y5h6jVnpK06DjySyIm5sEf4J'
-                            }
-                            title={profiles[currentIndex]?.name || 'Profile Image'}
-                        />
+                        <Box sx={{ position: 'relative', height: 400 }}>
+                            <CardMedia
+                                sx={{ height: '100%' }}
+                                image={getCurrentImage()}
+                                title={profiles[currentIndex]?.name || 'Profile Image'}
+                            />
+
+                            {/* Navigation arrows */}
+                            {getCurrentProfileImagesCount() > 1 && (
+                                <>
+                                    <IconButton
+                                        onClick={handlePrevImage}
+                                        sx={{
+                                            position: 'absolute',
+                                            left: 10,
+                                            top: '50%',
+                                            transform: 'translateY(-50%)',
+                                            backgroundColor: 'rgba(0,0,0,0.5)',
+                                            color: 'white',
+                                            '&:hover': {
+                                                backgroundColor: 'rgba(0,0,0,0.7)',
+                                            },
+                                        }}
+                                    >
+                                        <NavigateBefore />
+                                    </IconButton>
+                                    <IconButton
+                                        onClick={handleNextImage}
+                                        sx={{
+                                            position: 'absolute',
+                                            right: 10,
+                                            top: '50%',
+                                            transform: 'translateY(-50%)',
+                                            backgroundColor: 'rgba(0,0,0,0.5)',
+                                            color: 'white',
+                                            '&:hover': {
+                                                backgroundColor: 'rgba(0,0,0,0.7)',
+                                            },
+                                        }}
+                                    >
+                                        <NavigateNext />
+                                    </IconButton>
+                                </>
+                            )}
+
+                            {/* Featured image indicator */}
+                            {isCurrentImageFeatured() && (
+                                <Box
+                                    sx={{
+                                        position: 'absolute',
+                                        top: 10,
+                                        right: 10,
+                                        backgroundColor: 'rgba(255,255,255,0.7)',
+                                        padding: '5px 10px',
+                                        borderRadius: '20px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                    }}
+                                >
+                                    <Star color="warning" sx={{ fontSize: '1rem', mr: 0.5 }} />
+                                    <Typography variant="caption">Ảnh đại diện</Typography>
+                                </Box>
+                            )}
+
+                            {/* Image counter */}
+                            {getCurrentProfileImagesCount() > 1 && (
+                                <Box
+                                    sx={{
+                                        position: 'absolute',
+                                        bottom: 10,
+                                        left: '50%',
+                                        transform: 'translateX(-50%)',
+                                        backgroundColor: 'rgba(0,0,0,0.5)',
+                                        color: 'white',
+                                        padding: '2px 10px',
+                                        borderRadius: '20px',
+                                    }}
+                                >
+                                    <Typography variant="caption">
+                                        {currentImageIndex + 1}/{getCurrentProfileImagesCount()}
+                                    </Typography>
+                                </Box>
+                            )}
+                        </Box>
+
                         <CardContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                             <Typography gutterBottom variant="h5" component="div">
                                 Name: {profiles[currentIndex]?.name || 'N/A'}
@@ -234,6 +385,7 @@ const TinderCards = () => {
                     Đã hết người dùng
                 </Typography>
             )}
+
             {currentIndex <= profiles.length - 1 && (
                 <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
                     <Button
@@ -249,6 +401,7 @@ const TinderCards = () => {
                     </Button>
                 </Box>
             )}
+
             <Snackbar
                 open={snackbar.open}
                 autoHideDuration={2000}

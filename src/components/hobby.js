@@ -167,7 +167,7 @@ const Hobby = () => {
             .post('/update-hobby', { ...formData, email: state.userData.email, user_id: state.userData.user_id })
             .then((res) => {
                 dispatchState(getDataUser(res.data));
-                navigate('/');
+                navigate('/up-load-image');
             })
             .catch((err) => {
                 console.log(err);

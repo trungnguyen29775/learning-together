@@ -12,13 +12,13 @@ import ImageUploadPage from './components/imageUploadPage';
 function App() {
     const [state, dispatchState] = useContext(StateContext);
     const navigate = useNavigate();
-    // useEffect(() => {
-    //     if (state.loggin === false) navigate('/login');
-    //     console.log(state);
-    //     if (state.login === true) {
-    //         socket.emit('online', { user_id: state.userData.user_id });
-    //     }
-    // }, [state]);
+    useEffect(() => {
+        if (state.loggin === false) navigate('/login');
+        console.log(state);
+        if (state.login === true) {
+            socket.emit('online', { user_id: state.userData.user_id });
+        }
+    }, [state]);
 
     return (
         <Routes>

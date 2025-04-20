@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import {
     Box,
     Button,
@@ -19,6 +19,7 @@ import {
     Slide,
     Grow,
     useTheme,
+    CircularProgress,
 } from '@mui/material';
 import {
     Delete,
@@ -32,6 +33,9 @@ import {
 } from '@mui/icons-material';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { motion } from 'framer-motion';
+import instance from '../axios/instance';
+import StateContext from '../context/context.context';
+import { useNavigate } from 'react-router-dom';
 
 const CloudinaryUploadWidget = ({ uwConfig, onUploadSuccess }) => {
     const uploadWidgetRef = useRef(null);
@@ -89,10 +93,12 @@ const ImageUploadPage = () => {
     const [images, setImages] = useState([]);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [loading, setLoading] = useState(false);
     const cloudName = 'dmoqywl3c';
     const uploadPreset = 'learning-together';
     const theme = useTheme();
-
+    const [state, dispatchState] = useContext(StateContext);
+    const navigate = useNavigate();
     const handleCloudinaryUpload = (info) => {
         setError('');
         setSuccess('');
@@ -110,47 +116,173 @@ const ImageUploadPage = () => {
 
         setImages((prev) => [...prev, newImage]);
         setSuccess('Ảnh đã được tải lên thành công!');
-        setTimeout(() => setSuccess(''), 3000);
+        setTimeout(() => {
+            setSuccess('');
+        }, 3000);
+    };
+
+    const handleDeleteFromServer = async (imageId) => {
+        try {
+            await instance.post('/user-image/delete-image', {
+                user_image_id: imageId,
+            });
+        } catch (err) {
+            console.error('Error deleting image:', err);
+            throw err;
+        }
     };
 
     const handleDelete = async (index) => {
-        const newImages = [...images];
-        const [removed] = newImages.splice(index, 1);
+        try {
+            setLoading(true);
+            const newImages = [...images];
+            const [removed] = newImages.splice(index, 1);
 
-        if (removed.isFeatured && newImages.length > 0) {
-            newImages[0].isFeatured = true;
+            if (removed.user_image_id) {
+                await handleDeleteFromServer(removed.user_image_id);
+            }
+
+            if (removed.isFeatured && newImages.length > 0) {
+                newImages[0].isFeatured = true;
+                if (newImages[0].user_image_id) {
+                    await instance.post('/user-image/update-image', {
+                        user_image_id: newImages[0].user_image_id,
+                        is_featured: true,
+                    });
+                }
+            }
+
+            setImages(newImages);
+        } catch (err) {
+            setError('Xóa ảnh không thành công');
+        } finally {
+            setLoading(false);
         }
-
-        setImages(newImages);
     };
 
-    const handleSetFeatured = (index) => {
-        const newImages = images.map((img, i) => ({
-            ...img,
-            isFeatured: i === index,
-        }));
-        setImages(newImages);
+    const handleSetFeatured = async (index) => {
+        try {
+            setLoading(true);
+            const newImages = images.map((img, i) => ({
+                ...img,
+                isFeatured: i === index,
+            }));
+
+            // Reset all featured images first
+            await Promise.all(
+                images.map((img) => {
+                    if (img.user_image_id && img.isFeatured) {
+                        return instance.post('/user-image/update-image', {
+                            user_image_id: img.user_image_id,
+                            is_featured: false,
+                        });
+                    }
+                    return Promise.resolve();
+                }),
+            );
+
+            // Set new featured image
+            if (images[index].user_image_id) {
+                await instance.post('/user-image/update-image', {
+                    user_image_id: images[index].user_image_id,
+                    is_featured: true,
+                });
+            }
+
+            setImages(newImages);
+        } catch (err) {
+            console.error('Error updating featured image:', err);
+            setError('Cập nhật ảnh đại diện không thành công');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const onDragEnd = (result) => {
         if (!result.destination) return;
-
         const newImages = [...images];
         const [reorderedItem] = newImages.splice(result.source.index, 1);
         newImages.splice(result.destination.index, 0, reorderedItem);
         setImages(newImages);
     };
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (images.length < 3) {
             setError('Vui lòng tải lên ít nhất 3 ảnh');
             return;
         }
 
-        setSuccess('Ảnh đã được gửi thành công!');
-        setTimeout(() => setSuccess(''), 3000);
-        console.log('Submitted images:', images);
+        try {
+            setLoading(true);
+            setError('');
+
+            const userId = state.userData.user_id;
+            if (!userId) {
+                throw new Error('User not authenticated');
+            }
+
+            // Upload new images
+            const uploadPromises = images
+                .filter((img) => !img.user_image_id) // Only upload new images
+                .map((img, index) => {
+                    return instance.post('/user-image/create-image', {
+                        user_id: userId,
+                        path: img.url,
+                        is_featured: img.isFeatured,
+                    });
+                });
+
+            // Update existing images order and featured status
+            const updatePromises = images
+                .filter((img) => img.user_image_id)
+                .map((img, index) => {
+                    return instance.post('/user-image/update-image', {
+                        user_image_id: img.user_image_id,
+                        is_featured: img.isFeatured,
+                    });
+                });
+
+            await Promise.all([...uploadPromises, ...updatePromises]);
+
+            setSuccess('Ảnh đã được lưu thành công!');
+
+            setTimeout(() => {
+                setSuccess('');
+                setTimeout(() => navigate('/'), 1000);
+            }, 3000);
+        } catch (err) {
+            console.error('Error uploading images:', err);
+            setError(err.response?.data?.message || 'Có lỗi xảy ra khi lưu ảnh');
+        } finally {
+            setLoading(false);
+        }
     };
+
+    useEffect(() => {
+        const loadUserImages = async () => {
+            try {
+                setLoading(true);
+                const userId = state.userData?.user_id;
+                if (!userId) return;
+
+                const response = await instance.get(`/user-image/get-user-images/${userId}`);
+                if (response.data && response.data.length > 0) {
+                    const loadedImages = response.data.map((img) => ({
+                        url: img.path,
+                        user_image_id: img.user_image_id,
+                        isFeatured: img.is_featured,
+                    }));
+                    setImages(loadedImages);
+                }
+            } catch (err) {
+                console.error('Error loading user images:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadUserImages();
+    }, [state.userData]);
 
     return (
         <Container
@@ -158,11 +290,9 @@ const ImageUploadPage = () => {
             sx={{
                 height: '100vh',
                 overflow: 'auto',
-                scrollbarWidth: 'none', // Cho Firefox
-                '&::-webkit-scrollbar': {
-                    display: 'none', // Cho Chrome, Safari, Edge
-                },
-                msOverflowStyle: 'none', // Cho IE và Edge cũ
+                scrollbarWidth: 'none',
+                '&::-webkit-scrollbar': { display: 'none' },
+                msOverflowStyle: 'none',
             }}
         >
             <Slide direction="down" in={true} mountOnEnter unmountOnExit>
@@ -292,6 +422,12 @@ const ImageUploadPage = () => {
                 onUploadSuccess={handleCloudinaryUpload}
             />
 
+            {loading && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+                    <CircularProgress />
+                </Box>
+            )}
+
             {images.length > 0 && (
                 <Grow in={images.length > 0}>
                     <Box>
@@ -375,6 +511,7 @@ const ImageUploadPage = () => {
                                                                             color={
                                                                                 img.isFeatured ? 'warning' : 'default'
                                                                             }
+                                                                            disabled={loading}
                                                                         >
                                                                             {img.isFeatured ? <Star /> : <StarBorder />}
                                                                         </IconButton>
@@ -384,6 +521,7 @@ const ImageUploadPage = () => {
                                                                         <IconButton
                                                                             onClick={() => handleDelete(index)}
                                                                             color="error"
+                                                                            disabled={loading}
                                                                         >
                                                                             <Delete />
                                                                         </IconButton>
@@ -433,7 +571,7 @@ const ImageUploadPage = () => {
                                     variant="contained"
                                     size="large"
                                     onClick={handleSubmit}
-                                    disabled={images.length < 3}
+                                    disabled={images.length < 3 || loading}
                                     sx={{
                                         px: 6,
                                         py: 1.5,
@@ -446,7 +584,7 @@ const ImageUploadPage = () => {
                                         marginBottom: '20px',
                                     }}
                                 >
-                                    Hoàn thành
+                                    {loading ? <CircularProgress size={24} /> : 'Hoàn thành'}
                                 </Button>
                             </motion.div>
                         </Box>
