@@ -1,5 +1,4 @@
 import { Box, Card } from '@mui/material';
-import TinderCards from '../components/swiper';
 import { useContext, useEffect, useState } from 'react';
 import StateContext from '../context/context.context';
 import { useNavigate } from 'react-router-dom';
@@ -9,6 +8,8 @@ import Message from '../components/message';
 import Notification from '../components/notification';
 import Setting from '../components/setting';
 import instance from '../axios/instance';
+import TinderCards from '../components/swiper';
+import QuickChat from '../components/quickChat';
 
 const MainLayout = () => {
     const [state, dispatchState] = useContext(StateContext);
@@ -40,7 +41,16 @@ const MainLayout = () => {
                 <Sidebar />
             </Box>
             {state.currentComponent === 'home' ? (
-                <Box sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+                <Box
+                    sx={{
+                        flex: 1,
+                        overflowY: 'auto',
+                        overflowX: 'hidden',
+                        display: 'flex',
+                        alignItems: 'center',
+                        flexDirection: 'column',
+                    }}
+                >
                     <TinderCards />
                 </Box>
             ) : state.currentComponent === 'message' ? (
@@ -64,6 +74,10 @@ const MainLayout = () => {
                 </Box>
             ) : state.currentComponent === 'setting' ? (
                 <Setting />
+            ) : state.currentComponent === 'quickChat' ? (
+                <Box sx={{ height: '100%', flex: 1, overflow: 'auto' }}>
+                    <QuickChat />
+                </Box>
             ) : (
                 ''
             )}
