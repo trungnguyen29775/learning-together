@@ -18,6 +18,7 @@ import {
 import { Send, Favorite, FavoriteBorder, TimerOutlined, Person, Close } from '@mui/icons-material';
 import { socket } from '../socket';
 import StateContext from '../context/context.context';
+import instance from '../axios/instance';
 
 const QuickChat = () => {
     const [state] = useContext(StateContext);
@@ -28,6 +29,7 @@ const QuickChat = () => {
     const [chatInfo, setChatInfo] = useState(null);
     const [matchDialog, setMatchDialog] = useState(false);
     const [timer, setTimer] = useState(null);
+    const [friendId, setFriendId] = useState('');
 
     // Clean up on unmount
     useEffect(() => {
@@ -75,6 +77,8 @@ const QuickChat = () => {
     useEffect(() => {
         const onChatStarted = (data) => {
             setStatus('chatting');
+            console.log(data);
+            setFriendId(data.friend_id);
             setChatInfo({
                 id: data.chatId,
                 partnerInterests: data.partnerInterests,
@@ -94,8 +98,9 @@ const QuickChat = () => {
             ]);
         };
 
-        const onMatchMade = (data) => {
+        const onMatchMade = async (data) => {
             setStatus('matched');
+
             setMatchDialog(data);
             setChatInfo((prev) => ({ ...prev, partnerId: data.partnerId }));
         };
@@ -158,9 +163,19 @@ const QuickChat = () => {
         setMessage('');
     };
 
-    const likePartner = () => {
+    useEffect(() => {
+        console.log(chatInfo);
+    }, []);
+
+    const likePartner = async () => {
         if (!chatInfo?.id) return;
+
         socket.emit('like-partner', { chatId: chatInfo.id });
+        const res = await instance.post('/create-friendship', {
+            user_id: state.userData.user_id,
+            friend_id: friendId,
+            status: 'liked',
+        });
     };
 
     const leaveChat = () => {
