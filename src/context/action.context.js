@@ -10,6 +10,15 @@ import {
     ADD_NOTIFY,
 } from './constant.context';
 
+export const setIncomingCall = (payload) => ({
+    type: 'SET_INCOMING_CALL',
+    payload,
+});
+
+export const clearIncomingCall = () => ({
+    type: 'CLEAR_INCOMING_CALL',
+});
+
 export const logged = () => {
     return {
         type: LOGGED,

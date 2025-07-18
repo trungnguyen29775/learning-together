@@ -1,11 +1,13 @@
-import { ExitToApp, Home, Message, Notifications, Person, Settings, Timelapse } from '@mui/icons-material';
-import { Badge, Box, Divider, List, ListItem, Typography } from '@mui/material';
+import { ExitToApp, Home, Message, Notifications, Person, Settings, Timelapse, Favorite } from '@mui/icons-material';
+import { Badge, Box, Divider, List, ListItem, Typography, IconButton } from '@mui/material';
 import { useContext, useEffect, useState } from 'react';
 import StateContext from '../context/context.context';
 import { changeComponent, loggout } from '../context/action.context';
+// import LikedYouSidebar from './LikedYouSidebar';
 
 const Sidebar = () => {
     const [selectedComponent, setSelectedComponent] = useState('home');
+    // const [likedSidebarOpen, setLikedSidebarOpen] = useState(false);
     const [state, dispatchState] = useContext(StateContext);
     const commonStyle = {
         display: 'flex',
@@ -33,48 +35,63 @@ const Sidebar = () => {
     };
 
     return (
-        <Box
-            sx={{
-                height: '100%',
-                width: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                borderRight: '2px solid #e6f2ff',
-            }}
-        >
-            <Box sx={{ height: '70%' }}>
-                <List sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                    {[
-                        { id: 'home', icon: <Home />, label: 'HOME' },
-                        { id: 'profile', icon: <Person />, label: 'PROFILE' },
-                        { id: 'message', icon: <Message />, label: 'MESSAGE' },
-                        { id: 'quickChat', icon: <Timelapse />, label: 'QUICK CHAT' },
-                        {
-                            id: 'notification',
-                            icon: (
-                                <Badge badgeContent={4} color="primary">
-                                    <Notifications />
-                                </Badge>
-                            ),
-                            label: 'NOTIFICATION',
-                        },
-                    ].map((item) => (
+        <>
+            <Box
+                sx={{
+                    height: '100%',
+                    width: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    borderRight: '2px solid #e6f2ff',
+                }}
+            >
+                <Box sx={{ height: '70%' }}>
+                    <List sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                        {/* Existing sidebar items */}
+                        {[
+                            { id: 'home', icon: <Home />, label: 'HOME' },
+                            { id: 'profile', icon: <Person />, label: 'PROFILE' },
+                            { id: 'message', icon: <Message />, label: 'MESSAGE' },
+                            { id: 'quickChat', icon: <Timelapse />, label: 'QUICK CHAT' },
+                            {
+                                id: 'notification',
+                                icon: (
+                                    <Badge badgeContent={4} color="primary">
+                                        <Notifications />
+                                    </Badge>
+                                ),
+                                label: 'NOTIFICATION',
+                            },
+                        ].map((item) => (
+                            <ListItem
+                                key={item.id}
+                                id={item.id}
+                                onClick={handleChangeComponent}
+                                sx={{
+                                    ...commonStyle,
+                                    ...(selectedComponent === item.id && activeStyle),
+                                }}
+                            >
+                                {item.icon}
+                                <Typography sx={{ marginLeft: '10px', fontWeight: '600' }}>{item.label}</Typography>
+                            </ListItem>
+                        ))}
+                        {/* Liked You sidebar button */}
                         <ListItem
-                            key={item.id}
-                            id={item.id}
-                            onClick={handleChangeComponent}
-                            sx={{
-                                ...commonStyle,
-                                ...(selectedComponent === item.id && activeStyle),
+                            sx={{ ...commonStyle, justifyContent: 'center' }}
+                            onClick={() => {
+                                dispatchState(changeComponent('like-you'));
+                                setSelectedComponent('like-you');
                             }}
                         >
-                            {item.icon}
-                            <Typography sx={{ marginLeft: '10px', fontWeight: '600' }}>{item.label}</Typography>
+                            <IconButton color="secondary">
+                                <Favorite />
+                            </IconButton>
+                            <Typography sx={{ marginLeft: '10px', fontWeight: '600' }}>LIKED YOU</Typography>
                         </ListItem>
-                    ))}
-                </List>
-            </Box>
+                    </List>
+                </Box>
             <Divider />
             <Box sx={{ height: '30%' }}>
                 <List sx={{ display: 'flex', flexDirection: 'column', height: '100%', paddingBottom: 0 }}>
@@ -102,6 +119,8 @@ const Sidebar = () => {
                 </List>
             </Box>
         </Box>
+            {/* LikedYouSidebar is now rendered in MainLayout as a main component */}
+        </>
     );
 };
 

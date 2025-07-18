@@ -1,3 +1,5 @@
+export const SET_INCOMING_CALL = 'SET_INCOMING_CALL';
+export const CLEAR_INCOMING_CALL = 'CLEAR_INCOMING_CALL';
 export const LOGGED = 'LOGGED';
 export const GET_DATA_USER = 'GET_DATA_USER';
 export const GET_DATA_OTHER_USER = 'GET_DATA_OTHER_USER';

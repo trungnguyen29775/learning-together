@@ -334,10 +334,24 @@ const Profile = () => {
     const handleSubmit = async () => {
         try {
             setLoading(true);
-            await instance.post('/update-profile', {
+            const defaultProfileFields = {
+                name: '',
+                dob: '',
+                slogan: '',
+                school: '',
+                major: '',
+                needs: '',
+                sex: '',
+                favoriteHobbies: [],
+                favoriteMovies: [],
+            };
+            const requestBody = {
                 email: state.userData.email,
+                ...defaultProfileFields,
                 ...profileData,
-            });
+            };
+            console.log('Profile update request body:', requestBody);
+            await instance.post('/update-profile', requestBody);
 
             // Save images
             if (userImages.length > 0) {

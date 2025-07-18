@@ -14,8 +14,9 @@ import {
     DialogContent,
     DialogActions,
     Chip,
+    Drawer
 } from '@mui/material';
-import { Send, Favorite, FavoriteBorder, TimerOutlined, Person, Close } from '@mui/icons-material';
+import { Send, Favorite, FavoriteBorder, TimerOutlined, Person, Close, Star, School, Work, LocationOn } from '@mui/icons-material';
 import { socket } from '../socket';
 import StateContext from '../context/context.context';
 import instance from '../axios/instance';
@@ -28,6 +29,9 @@ const QuickChat = () => {
     const [message, setMessage] = useState('');
     const [chatInfo, setChatInfo] = useState(null);
     const [matchDialog, setMatchDialog] = useState(false);
+    const [matchedUserProfile, setMatchedUserProfile] = useState(null);
+    const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
+    const [matchedUserImages, setMatchedUserImages] = useState([]);
     const [timer, setTimer] = useState(null);
     const [friendId, setFriendId] = useState('');
 
@@ -40,6 +44,83 @@ const QuickChat = () => {
             }
         };
     }, [timer, chatInfo?.id]);
+
+    // Handler to open profile drawer
+    function calculateAge(dob) {
+        if (!dob) return 'Unknown';
+        const birthDate = new Date(dob);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        if (
+            today.getMonth() < birthDate.getMonth() ||
+            (today.getMonth() === birthDate.getMonth() && today.getDate() < birthDate.getDate())
+        ) {
+            age--;
+        }
+        return age;
+    }
+    function processProfileData(profile) {
+        if (!profile) return [];
+        const hobbies = Object.keys(profile).filter(
+            (key) =>
+                [
+                    'music',
+                    'game',
+                    'sing',
+                    'eat',
+                    'exercise',
+                    'running',
+                    'badminton',
+                    'walking',
+                    'beach',
+                    'hiking',
+                    'travel',
+                    'reading',
+                    'pets',
+                    'basketball',
+                    'pickelBall',
+                    'horror',
+                    'anime',
+                    'romance',
+                    'action',
+                    'detective',
+                    'fantasy',
+                ].includes(key) && profile[key],
+        );
+        return hobbies.map((hobby) => ({
+            label: hobby.charAt(0).toUpperCase() + hobby.slice(1),
+            status: true,
+        }));
+    }
+    const handleAvatarClick = async () => {
+        if (!matchedUserProfile || !matchedUserProfile.user_id) {
+            setProfileDrawerOpen(true);
+            setMatchedUserImages([]);
+            return;
+        }
+        try {
+            const imgRes = await instance.get(`/user-image/get-user-images/${matchedUserProfile.user_id}`);
+            let images = imgRes.data;
+            if (!images || images.length === 0) {
+                images = [
+                    {
+                        path:
+                            matchedUserProfile.avt_file_path ||
+                            'https://encrypted-tbn3.gstatic.com/images?q=tbn:ANd9GcRa9QlrNDT8NNM4FHaxIYZszOl1y5h6jVnpK06DjySyIm5sEf4J',
+                        is_featured: true,
+                    },
+                ];
+            }
+            setMatchedUserImages(images);
+            setProfileDrawerOpen(true);
+        } catch (err) {
+            setMatchedUserImages([]);
+            setProfileDrawerOpen(true);
+        }
+    };
+    const handleDrawerClose = () => {
+        setProfileDrawerOpen(false);
+    };
 
     const startTimer = useCallback(() => {
         if (timer) clearInterval(timer);
@@ -99,10 +180,16 @@ const QuickChat = () => {
         };
 
         const onMatchMade = async (data) => {
-            setStatus('matched');
-
-            setMatchDialog(data);
-            setChatInfo((prev) => ({ ...prev, partnerId: data.partnerId }));
+        setStatus('matched');
+        setMatchDialog(data);
+        setChatInfo((prev) => ({ ...prev, partnerId: data.partnerId }));
+        // Fetch matched user's profile
+        try {
+            const res = await instance.get(`/get-profile/${data.partnerId}`);
+            setMatchedUserProfile(res.data.user);
+        } catch (err) {
+            setMatchedUserProfile(null);
+        }
         };
 
         const onChatEnded = ({ reason }) => {
@@ -257,9 +344,18 @@ const QuickChat = () => {
                                             sx={{
                                                 display: 'flex',
                                                 justifyContent: msg.isPartner ? 'flex-start' : 'flex-end',
+                                                alignItems: 'center',
                                                 mb: 2,
                                             }}
                                         >
+                                            {msg.isPartner && matchedUserProfile && (
+                                                <Avatar
+                                                    src={matchedUserProfile.avatar}
+                                                    alt={matchedUserProfile.name}
+                                                    sx={{ width: 32, height: 32, mr: 1, cursor: 'pointer' }}
+                                                    onClick={handleAvatarClick}
+                                                />
+                                            )}
                                             <Box
                                                 sx={{
                                                     p: 1.5,
@@ -323,7 +419,14 @@ const QuickChat = () => {
                 <DialogContent>
                     {matchDialog && (
                         <>
-                            <Typography>You matched with user: {matchDialog.partnerId}</Typography>
+                            {matchedUserProfile ? (
+                                <Box display="flex" alignItems="center" gap={2} mb={2}>
+                                    <Avatar src={matchedUserProfile.avatar} alt={matchedUserProfile.name} sx={{ width: 56, height: 56, cursor: 'pointer' }} onClick={handleAvatarClick} />
+                                    <Typography variant="h6">{matchedUserProfile.name}</Typography>
+                                </Box>
+                            ) : (
+                                <Typography>You matched with user: {matchDialog.partnerId}</Typography>
+                            )}
                             <Typography sx={{ mt: 2 }}>Shared interests:</Typography>
                             <Box display="flex" flexWrap="wrap" gap={1} mt={1}>
                                 {matchDialog.sharedInterests?.map((interest, i) => (
@@ -335,9 +438,108 @@ const QuickChat = () => {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setMatchDialog(false)}>Close</Button>
-                    <Button variant="contained">View Profile</Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Profile Drawer for other user */}
+            <Drawer anchor="right" open={profileDrawerOpen} onClose={handleDrawerClose}>
+                <Box sx={{ width: 400, p: 3 }} role="presentation">
+                    {matchedUserProfile ? (
+                        <>
+                            {/* Show all images */}
+                            {matchedUserImages.length > 0 && (
+                                <Box>
+                                    {matchedUserImages.map((image, idx) => (
+                                        <Box
+                                            key={idx}
+                                            sx={{
+                                                width: '100%',
+                                                height: '220px',
+                                                position: 'relative',
+                                                backgroundSize: 'cover',
+                                                backgroundPosition: 'center',
+                                                backgroundImage: `url(${image.path})`,
+                                                mt: idx === 0 ? 0 : 2,
+                                                borderRadius: 2,
+                                            }}
+                                        >
+                                            {image.is_featured && (
+                                                <Box
+                                                    sx={{
+                                                        position: 'absolute',
+                                                        top: '16px',
+                                                        left: '16px',
+                                                        backgroundColor: 'rgba(255,255,255,0.7)',
+                                                        padding: '4px 12px',
+                                                        borderRadius: '20px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        fontSize: '14px',
+                                                    }}
+                                                >
+                                                    <Star color="warning" sx={{ fontSize: '1rem', mr: 0.5 }} />
+                                                    <span>Profile Photo</span>
+                                                </Box>
+                                            )}
+                                        </Box>
+                                    ))}
+                                </Box>
+                            )}
+
+                            {/* Profile info */}
+                            <Box sx={{ mt: 3 }}>
+                                <Typography variant="h5" fontWeight="bold" sx={{ mb: 1 }}>
+                                    {matchedUserProfile.name || 'N/A'}, {calculateAge(matchedUserProfile.dob)}
+                                </Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                                    <LocationOn fontSize="small" />
+                                    <Typography variant="body1" sx={{ ml: 0.5 }}>
+                                        {matchedUserProfile.location || 'Unknown location'}
+                                    </Typography>
+                                </Box>
+                                <Typography variant="body1" sx={{ mb: 3 }}>
+                                    {matchedUserProfile.bio || 'No bio available'}
+                                </Typography>
+                                <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
+                                    Basics
+                                </Typography>
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                                    {matchedUserProfile.school && (
+                                        <Chip icon={<School />} label={matchedUserProfile.school} variant="outlined" />
+                                    )}
+                                    {matchedUserProfile.job && (
+                                        <Chip icon={<Work />} label={matchedUserProfile.job} variant="outlined" />
+                                    )}
+                                    {matchedUserProfile.needs && (
+                                        <Chip
+                                            label={`Looking for: ${matchedUserProfile.needs.replace(/([A-Z])/g, ' $1')}`}
+                                            variant="outlined"
+                                        />
+                                    )}
+                                </Box>
+                                <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
+                                    Interests
+                                </Typography>
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                    {processProfileData(matchedUserProfile).map((item, index) => (
+                                        <Chip
+                                            key={index}
+                                            label={item.label}
+                                            sx={{
+                                                backgroundColor: '#e3f2fd',
+                                                color: '#1976d2',
+                                            }}
+                                        />
+                                    ))}
+                                </Box>
+                            </Box>
+                        </>
+                    ) : (
+                        <Typography>Loading profile...</Typography>
+                    )}
+                    <Button onClick={handleDrawerClose} sx={{ mt: 3 }} fullWidth variant="outlined">Close</Button>
+                </Box>
+            </Drawer>
         </Box>
     );
 };

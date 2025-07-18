@@ -106,22 +106,70 @@ export default function Register(props) {
     const handleSubmit = (event) => {
         event.preventDefault();
         const data = new FormData(event.currentTarget);
-        instance
-            .post('/register', {
-                name: data.get('name'),
-                email: data.get('email'),
-                password: data.get('password'),
-            })
-            .then((res) => {
-                if (res.status === 201) {
-                    dispatchState(logged());
-                    dispatchState(getDataUser(res.data.user));
-                    navigate('/hobby');
+        // Get location from browser
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const latitude = position.coords.latitude;
+                    const longitude = position.coords.longitude;
+                    instance
+                        .post('/register', {
+                            name: data.get('name'),
+                            email: data.get('email'),
+                            password: data.get('password'),
+                            latitude,
+                            longitude,
+                        })
+                        .then((res) => {
+                            if (res.status === 201) {
+                                dispatchState(logged());
+                                dispatchState(getDataUser(res.data.user));
+                                navigate('/hobby');
+                            }
+                        })
+                        .catch((err) => {
+                            console.log(err);
+                        });
+                },
+                (error) => {
+                    // If user denies location, register without location
+                    instance
+                        .post('/register', {
+                            name: data.get('name'),
+                            email: data.get('email'),
+                            password: data.get('password'),
+                        })
+                        .then((res) => {
+                            if (res.status === 201) {
+                                dispatchState(logged());
+                                dispatchState(getDataUser(res.data.user));
+                                navigate('/hobby');
+                            }
+                        })
+                        .catch((err) => {
+                            console.log(err);
+                        });
                 }
-            })
-            .catch((err) => {
-                console.log(err);
-            });
+            );
+        } else {
+            // If geolocation not supported
+            instance
+                .post('/register', {
+                    name: data.get('name'),
+                    email: data.get('email'),
+                    password: data.get('password'),
+                })
+                .then((res) => {
+                    if (res.status === 201) {
+                        dispatchState(logged());
+                        dispatchState(getDataUser(res.data.user));
+                        navigate('/hobby');
+                    }
+                })
+                .catch((err) => {
+                    console.log(err);
+                });
+        }
     };
 
     return (

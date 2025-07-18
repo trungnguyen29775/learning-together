@@ -18,6 +18,7 @@ export const initState = {
     currentComponent: 'home',
     messageNotify: 0,
     notify: [],
+    incomingCall: null, // global incoming call info
 };
 
 export const reducer = (state, action) => {
@@ -94,6 +95,18 @@ export const reducer = (state, action) => {
         //         tem
         //     }
 
+        case 'SET_INCOMING_CALL': {
+            return {
+                ...state,
+                incomingCall: action.payload,
+            };
+        }
+        case 'CLEAR_INCOMING_CALL': {
+            return {
+                ...state,
+                incomingCall: null,
+            };
+        }
         default: {
             console.log('Invalid Action');
             return state;
