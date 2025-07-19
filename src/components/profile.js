@@ -123,6 +123,12 @@ const CloudinaryUploadWidget = ({ uwConfig, onUploadSuccess }) => {
     );
 };
 
+const priorityOptions = [
+    { label: 'Thấp', value: 1 },
+    { label: 'Vừa', value: 2 },
+    { label: 'Cao', value: 3 },
+];
+
 const Profile = () => {
     const [state] = useContext(StateContext);
     const [profileData, setProfileData] = useState({
@@ -135,6 +141,13 @@ const Profile = () => {
         needs: '',
         favoriteHobbies: {},
         favoriteMovies: {},
+    });
+    const [priority, setPriority] = useState({
+        hobbies: 1,
+        movieGenres: 1,
+        needs: 1,
+        school: 1,
+        location: 1,
     });
     const [userImages, setUserImages] = useState([]);
     const [selectedImage, setSelectedImage] = useState(null);
@@ -157,8 +170,54 @@ const Profile = () => {
         if (state.userData) {
             loadProfileData();
             loadUserImages();
+            loadPriority();
         }
     }, [state.userData]);
+
+    const loadPriority = async () => {
+        try {
+            // Try to get existing priority settings
+            const res = await instance.get(`/api/user-priority/${state.userData.user_id}`);
+            if (res.data) {
+                setPriority({
+                    hobbies: res.data.hobbies || 1,
+                    movieGenres: res.data.movieGenres || 1,
+                    needs: res.data.needs || 1,
+                    school: res.data.school || 1,
+                    location: res.data.location || 1,
+                });
+            }
+        } catch (error) {
+            if (error.response?.status === 404) {
+                // If no priority settings exist yet, create them
+                try {
+                    const defaultPriorities = {
+                        user_id: state.userData.user_id,
+                        hobbies: 1,
+                        movieGenres: 1,
+                        needs: 1,
+                        school: 1,
+                        location: 1
+                    };
+                    
+                    await instance.post('/api/user-priority', defaultPriorities);
+                    setPriority(defaultPriorities);
+                } catch (createError) {
+                    console.error('Error creating default priorities:', createError);
+                }
+            } else {
+                console.error('Error loading priorities:', error);
+            }
+            // Set default priorities in state regardless of error
+            setPriority({
+                hobbies: 1,
+                movieGenres: 1,
+                needs: 1,
+                school: 1,
+                location: 1,
+            });
+        }
+    };
 
     const loadProfileData = () => {
         setProfileData({
@@ -334,25 +393,76 @@ const Profile = () => {
     const handleSubmit = async () => {
         try {
             setLoading(true);
-            const defaultProfileFields = {
-                name: '',
-                dob: '',
-                slogan: '',
-                school: '',
-                major: '',
-                needs: '',
-                sex: '',
-                favoriteHobbies: [],
-                favoriteMovies: [],
-            };
+            // Convert favoriteHobbies object to array of selected hobbies
+            const selectedHobbies = Object.entries(profileData.favoriteHobbies)
+                .filter(([_, isSelected]) => isSelected)
+                .map(([hobby]) => hobby);
+            // Convert favoriteMovies object to array of selected genres
+            const selectedMovies = Object.entries(profileData.favoriteMovies)
+                .filter(([_, isSelected]) => isSelected)
+                .map(([genre]) => genre);
+            // Prepare request body
             const requestBody = {
+                user_id: state.userData.user_id,
                 email: state.userData.email,
-                ...defaultProfileFields,
-                ...profileData,
+                name: profileData.name,
+                dob: profileData.dob || null,
+                sex: profileData.sex || '',
+                school: profileData.school || '',
+                major: profileData.major || '',
+                slogan: profileData.slogan || '',
+                needs: profileData.needs || '',
+                favoriteHobbies: selectedHobbies || [],
+                favoriteMovies: selectedMovies || [],
             };
-            console.log('Profile update request body:', requestBody);
-            await instance.post('/update-profile', requestBody);
+            // Debug: log request body
+            console.log('updateProfile requestBody:', requestBody);
 
+            // Validate required fields
+            const allowedNeeds = ['findTutor', 'studyBuddy', 'sharedHobby', ''];
+            if (!requestBody.email) {
+                showSnackbar('Email is required!', 'error');
+                setLoading(false);
+                return;
+            }
+            if (!allowedNeeds.includes(requestBody.needs)) {
+                showSnackbar('Nhu cầu không hợp lệ!', 'error');
+                setLoading(false);
+                return;
+            }
+
+            // Compare current user data to new data
+            const userData = state.userData;
+            let profileChanged = false;
+            if (
+                userData.name !== requestBody.name ||
+                (userData.dob ? userData.dob.split('T')[0] : '') !== requestBody.dob ||
+                userData.sex !== requestBody.sex ||
+                userData.school !== requestBody.school ||
+                userData.major !== requestBody.major ||
+                userData.slogan !== requestBody.slogan ||
+                userData.needs !== requestBody.needs ||
+                JSON.stringify(userData.favoriteHobbies || []) !== JSON.stringify(requestBody.favoriteHobbies) ||
+                JSON.stringify(userData.favoriteMovies || []) !== JSON.stringify(requestBody.favoriteMovies)
+            ) {
+                profileChanged = true;
+            }
+
+            // Only update profile if changed
+            if (profileChanged) {
+                await instance.post('/update-profile', requestBody);
+            }
+
+            // Save priority (always)
+            try {
+                await instance.post('/api/user-priority', {
+                    user_id: state.userData.user_id,
+                    ...priority,
+                });
+            } catch (priorityError) {
+                console.error('Error updating priority:', priorityError);
+                showSnackbar('Cập nhật ưu tiên không thành công', 'error');
+            }
             // Save images
             if (userImages.length > 0) {
                 // Upload new images
@@ -365,7 +475,6 @@ const Profile = () => {
                             is_featured: img.is_featured,
                         });
                     });
-
                 // Update existing images
                 const updatePromises = userImages
                     .filter((img) => img.user_image_id)
@@ -375,14 +484,25 @@ const Profile = () => {
                             is_featured: img.is_featured,
                         });
                     });
-
                 await Promise.all([...uploadPromises, ...updatePromises]);
             }
-
             showSnackbar('Thông tin đã được cập nhật thành công', 'success');
+            // Reload profile data to ensure we have the latest state
+            await loadProfileData();
+            await loadPriority();
         } catch (error) {
             console.error('Error updating profile:', error);
-            showSnackbar('Cập nhật thông tin không thành công', 'error');
+            let errorMsg = 'Cập nhật thông tin không thành công';
+            if (error.response && error.response.data) {
+                if (typeof error.response.data === 'string') {
+                    errorMsg += ': ' + error.response.data;
+                } else if (error.response.data.message) {
+                    errorMsg += ': ' + error.response.data.message;
+                } else {
+                    errorMsg += ': ' + JSON.stringify(error.response.data);
+                }
+            }
+            showSnackbar(errorMsg, 'error');
         } finally {
             setLoading(false);
         }
@@ -824,6 +944,75 @@ const Profile = () => {
                         ))}
                     </Box>
 
+                    <Divider sx={{ my: 3 }} />
+                    <Typography variant="h6">Ưu tiên khi tìm đối tượng phù hợp:</Typography>
+                    <Grid container spacing={2} sx={{ mb: 2 }}>
+                        <Grid item xs={12} sm={6} md={4}>
+                            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>Ưu tiên Sở thích</Typography>
+                            <FormControl fullWidth>
+                                <InputLabel>Ưu tiên Sở thích</InputLabel>
+                                <Select
+                                    value={priority.hobbies}
+                                    label="Ưu tiên Sở thích"
+                                    onChange={e => setPriority(p => ({ ...p, hobbies: e.target.value }))}
+                                >
+                                    {priorityOptions.map(opt => <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>)}
+                                </Select>
+                            </FormControl>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={4}>
+                            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>Ưu tiên Thể loại phim</Typography>
+                            <FormControl fullWidth>
+                                <InputLabel>Ưu tiên Thể loại phim</InputLabel>
+                                <Select
+                                    value={priority.movieGenres}
+                                    label="Ưu tiên Thể loại phim"
+                                    onChange={e => setPriority(p => ({ ...p, movieGenres: e.target.value }))}
+                                >
+                                    {priorityOptions.map(opt => <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>)}
+                                </Select>
+                            </FormControl>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={4}>
+                            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>Ưu tiên Nhu cầu</Typography>
+                            <FormControl fullWidth>
+                                <InputLabel>Ưu tiên Nhu cầu</InputLabel>
+                                <Select
+                                    value={priority.needs}
+                                    label="Ưu tiên Nhu cầu"
+                                    onChange={e => setPriority(p => ({ ...p, needs: e.target.value }))}
+                                >
+                                    {priorityOptions.map(opt => <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>)}
+                                </Select>
+                            </FormControl>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={4}>
+                            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>Ưu tiên Trường học</Typography>
+                            <FormControl fullWidth>
+                                <InputLabel>Ưu tiên Trường học</InputLabel>
+                                <Select
+                                    value={priority.school}
+                                    label="Ưu tiên Trường học"
+                                    onChange={e => setPriority(p => ({ ...p, school: e.target.value }))}
+                                >
+                                    {priorityOptions.map(opt => <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>)}
+                                </Select>
+                            </FormControl>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={4}>
+                            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>Ưu tiên Vị trí</Typography>
+                            <FormControl fullWidth>
+                                <InputLabel>Ưu tiên Vị trí</InputLabel>
+                                <Select
+                                    value={priority.location}
+                                    label="Ưu tiên Vị trí"
+                                    onChange={e => setPriority(p => ({ ...p, location: e.target.value }))}
+                                >
+                                    {priorityOptions.map(opt => <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>)}
+                                </Select>
+                            </FormControl>
+                        </Grid>
+                    </Grid>
                     <Button
                         variant="contained"
                         color="primary"

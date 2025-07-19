@@ -18,9 +18,10 @@ import {
     Button,
     Dialog,
     DialogTitle,
-    DialogContent
+    DialogContent,
+    Chip
 } from '@mui/material';
-import { Send, Call, Videocam as VideocamIcon, Info, MoreVert, Close, CallEnd as CallEndIcon } from '@mui/icons-material';
+import { Send, Call, Videocam as VideocamIcon, Info, MoreVert, Close, CallEnd as CallEndIcon, VolumeOff, VolumeUp, VideocamOff } from '@mui/icons-material';
 import instance from '../axios/instance';
 import StateContext from '../context/context.context';
 import { socket } from '../socket';
@@ -50,11 +51,12 @@ const Message = ({ acceptedCallInfo, setAcceptedCallInfo }) => {
     const remoteVideoRef = useRef(null);
     const [mediaStream, setMediaStream] = useState(null);
     const [remoteStream, setRemoteStream] = useState(null);
+    const [mediaError, setMediaError] = useState('');
 
     // Auto-join call if acceptedCallInfo is provided
     useEffect(() => {
         if (acceptedCallInfo && peerId) {
-            // Open call dialog
+            console.log('[Call] acceptedCallInfo:', acceptedCallInfo, 'peerId:', peerId);
             setCallActive(true);
             setCallDialog({
                 open: true,
@@ -64,31 +66,53 @@ const Message = ({ acceptedCallInfo, setAcceptedCallInfo }) => {
             });
             setCallStartTime(Date.now());
             setRemotePeerId(acceptedCallInfo.peerId);
-            // Answer the call (connect to caller's peerId)
             (async () => {
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({
                         video: acceptedCallInfo.type === 'video',
                         audio: true,
                     });
+                    // For audio-only calls, disable video tracks
+                    if (acceptedCallInfo.type !== 'video') {
+                        stream.getVideoTracks().forEach(track => track.enabled = false);
+                    }
+                    setMediaError('');
+                    console.log('[getUserMedia] local stream:', stream, stream.getTracks());
                     setMediaStream(stream);
                     if (localVideoRef.current) {
                         localVideoRef.current.srcObject = stream;
+                        setTimeout(() => {
+                            localVideoRef.current.play().catch(e => console.warn('Local video play() error:', e));
+                        }, 100);
+                        const videoTracks = stream.getVideoTracks();
+                        const audioTracks = stream.getAudioTracks();
+                        console.log('[Local Stream] video enabled:', videoTracks.map(t => t.enabled), 'audio enabled:', audioTracks.map(t => t.enabled));
                     }
                     if (peer && acceptedCallInfo.peerId) {
                         const call = peer.call(acceptedCallInfo.peerId, stream, { metadata: { type: acceptedCallInfo.type } });
+                        console.log('[PeerJS] Calling peer:', acceptedCallInfo.peerId, 'with stream:', stream);
                         call.on('stream', (remoteStream) => {
+                            console.log('[PeerJS] Received remote stream:', remoteStream, remoteStream.getTracks());
                             setRemoteStream(remoteStream);
                             if (remoteVideoRef.current) {
                                 remoteVideoRef.current.srcObject = remoteStream;
+                                setTimeout(() => {
+                                    remoteVideoRef.current.play().catch(e => console.warn('Remote video play() error:', e));
+                                }, 100);
+                                const videoTracks = remoteStream.getVideoTracks();
+                                const audioTracks = remoteStream.getAudioTracks();
+                                console.log('[Remote Stream] video enabled:', videoTracks.map(t => t.enabled), 'audio enabled:', audioTracks.map(t => t.enabled));
                             }
+                        });
+                        call.on('error', (err) => {
+                            console.error('[PeerJS] Call error:', err);
                         });
                     }
                 } catch (err) {
-                    alert('Không thể truy cập camera/microphone.');
+                    setMediaError('Không thể truy cập camera/microphone. Vui lòng kiểm tra quyền truy cập hoặc thiết bị.');
+                    console.error('[getUserMedia] Error:', err);
                 }
             })();
-            // Reset acceptedCallInfo after use
             setAcceptedCallInfo && setAcceptedCallInfo(null);
         }
     }, [acceptedCallInfo, peer, peerId]);
@@ -98,29 +122,46 @@ const Message = ({ acceptedCallInfo, setAcceptedCallInfo }) => {
         const newPeer = new Peer(undefined, { debug: 2 });
         setPeer(newPeer);
         newPeer.on('open', (id) => {
+            console.log('[PeerJS] Opened with id:', id);
             setPeerId(id);
         });
         // Handle incoming PeerJS call
         newPeer.on('call', async (call) => {
+            console.log('[PeerJS] Incoming call:', call);
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: call.metadata.type === 'video',
                     audio: true,
                 });
+                // For audio-only calls, disable video tracks
+                if (call.metadata.type !== 'video') {
+                    stream.getVideoTracks().forEach(track => track.enabled = false);
+                }
+                setMediaError('');
+                console.log('[getUserMedia] local stream (answer):', stream, stream.getTracks());
                 setMediaStream(stream);
                 if (localVideoRef.current) {
                     localVideoRef.current.srcObject = stream;
                 }
                 call.answer(stream);
+                console.log('[PeerJS] Answered call with stream:', stream);
                 call.on('stream', (remoteStream) => {
+                    console.log('[PeerJS] Received remote stream (answer):', remoteStream, remoteStream.getTracks());
                     setRemoteStream(remoteStream);
                     if (remoteVideoRef.current) {
                         remoteVideoRef.current.srcObject = remoteStream;
                     }
                 });
+                call.on('error', (err) => {
+                    console.error('[PeerJS] Call error (answer):', err);
+                });
             } catch (err) {
-                alert('Không thể truy cập camera/microphone.');
+                setMediaError('Không thể truy cập camera/microphone. Vui lòng kiểm tra quyền truy cập hoặc thiết bị.');
+                console.error('[getUserMedia] Error (answer):', err);
             }
+        });
+        newPeer.on('error', (err) => {
+            console.error('[PeerJS] Peer error:', err);
         });
         return () => {
             newPeer.destroy();
@@ -136,8 +177,9 @@ const Message = ({ acceptedCallInfo, setAcceptedCallInfo }) => {
             setRemotePeerId(calleePeerId);
         }
         function handleCallEnd({ fromUser, toUser, type, duration, chat_rooms_id }) {
-        <Videocam />
+            // End the call dialog and reset state when other user ends the call
             setCallActive(false);
+            setCallDialog({ open: false, type: '', from: null, duration: 0 });
             setRemotePeerId('');
             setRemoteStream(null);
             if (mediaStream) {
@@ -169,6 +211,7 @@ const Message = ({ acceptedCallInfo, setAcceptedCallInfo }) => {
     // Start a call (audio or video)
     const handleStartCall = async (type) => {
         if (!selectedUser || !peerId) return;
+        console.log('[Call] handleStartCall:', { selectedUser, peerId, type });
         setCallActive(true);
         setCallStartTime(Date.now());
         socket.emit('start-call', {
@@ -243,16 +286,76 @@ const Message = ({ acceptedCallInfo, setAcceptedCallInfo }) => {
     const otherUser = selectedUser;
 
     // Hàm đóng menu
+    // Call duration timer
+    const [callDuration, setCallDuration] = useState(0);
+    useEffect(() => {
+        let timer;
+        if (callDialogOpen && callActive) {
+            timer = setInterval(() => {
+                setCallDuration((prev) => prev + 1);
+            }, 1000);
+        } else {
+            setCallDuration(0);
+        }
+        return () => clearInterval(timer);
+    }, [callDialogOpen, callActive]);
+
+    // Mute/camera toggle state (UI only)
+    const [muted, setMuted] = useState(false);
+    const [cameraOn, setCameraOn] = useState(true);
+
+    // Real mute/camera logic
+    const handleToggleMute = () => {
+        if (mediaStream) {
+            const audioTracks = mediaStream.getAudioTracks();
+            if (audioTracks.length > 0) {
+                const newMuted = !audioTracks[0].enabled;
+                audioTracks.forEach(track => { track.enabled = newMuted; });
+                setMuted(!newMuted);
+            }
+        }
+    };
+
+    const handleToggleCamera = () => {
+        if (mediaStream) {
+            const videoTracks = mediaStream.getVideoTracks();
+            if (videoTracks.length > 0) {
+                const newCameraOn = !videoTracks[0].enabled;
+                videoTracks.forEach(track => { track.enabled = newCameraOn; });
+                setCameraOn(newCameraOn);
+            }
+        }
+    };
+
     const renderCallDialog = () => (
-        <Dialog open={callDialogOpen} onClose={handleCallDialogClose} maxWidth="xs" fullWidth PaperProps={{
+        <Dialog open={callDialogOpen} onClose={handleCallDialogClose} fullWidth TransitionProps={{ appear: true }} PaperProps={{
             sx: {
-                borderRadius: 4,
-                boxShadow: 8,
+                borderRadius: 6,
+                boxShadow: 12,
                 background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
+                border: '3px solid #1976d2',
+                animation: callDialogOpen ? 'fadeIn 0.5s' : 'none',
+                minHeight: '80vh',
+                width: '80vw',
+                maxWidth: '80vw',
+                position: 'fixed',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 2000,
             }
         }}>
             <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Avatar
+                        src={otherUser?.avt_file_path || 'https://encrypted-tbn3.gstatic.com/images?q=tbn:ANd9GcRa9QlrNDT8NNM4FHaxIYZszOl1y5h6jVnpK06DjySyIm5sEf4J'}
+                        alt={otherUser?.name || 'Avatar'}
+                        sx={{ width: 70, height: 70, border: '3px solid #1976d2', boxShadow: 4, mr: 2, animation: !callActive ? 'ringing 1.2s infinite' : 'none' }}
+                    />
                     {callType === 'video' ? <VideocamIcon color="primary" /> : <Call color="primary" />}
                     <Typography variant="h6" sx={{ fontWeight: 700, color: '#1976d2' }}>
                         {callType === 'video' ? 'Video Call' : 'Audio Call'}
@@ -262,56 +365,127 @@ const Message = ({ acceptedCallInfo, setAcceptedCallInfo }) => {
                     <Close />
                 </IconButton>
             </DialogTitle>
-            <DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 3, pt: 1 }}>
+            <DialogContent sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                p: 4,
+                pt: 2,
+                height: '100%',
+                width: '100%',
+            }}>
+                <Box sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" sx={{ color: '#1976d2', fontWeight: 600, mb: 1, textAlign: 'center' }}>
+                        {otherUser?.name || 'Connecting...'}
+                    </Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+                        <Avatar src={selectedProfileImages?.find(img => img.is_featured)?.path || otherUser?.avt_file_path || 'https://encrypted-tbn3.gstatic.com/images?q=tbn:ANd9GcRa9QlrNDT8NNM4FHaxIYZszOl1y5h6jVnpK06DjySyIm5sEf4J'} sx={{ width: 40, height: 40, border: '2px solid #1976d2' }} />
+                        <Chip label={callActive ? 'In Call' : (!localVideoRef.current?.srcObject || !remoteVideoRef.current?.srcObject) ? 'Connecting...' : 'Call Ended'} color={callActive ? 'success' : 'warning'} size="small" sx={{ fontWeight: 600 }} />
+                    </Box>
+                </Box>
+                <Typography variant="caption" sx={{ color: '#333', mb: 2 }}>
+                    Duration: {Math.floor(callDuration / 60)}:{('0' + (callDuration % 60)).slice(-2)}
+                </Typography>
+                {mediaError && (
+                    <Alert severity="error" sx={{ mb: 2 }}>{mediaError}</Alert>
+                )}
                 {callType === 'video' ? (
                     <Box sx={{
                         display: 'flex',
-                        flexDirection: { xs: 'column', sm: 'row' },
+                        flexDirection: { xs: 'column', md: 'row' },
                         alignItems: 'center',
                         justifyContent: 'center',
-                        gap: 3,
+                        gap: 6,
                         width: '100%',
                         mb: 2,
                     }}>
-                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                             <video
                                 ref={localVideoRef}
                                 autoPlay
-                                muted
+                                muted={muted}
                                 playsInline
-                                style={{ width: 120, height: 90, borderRadius: 10, background: '#e3e3e3', border: '2px solid #1976d2' }}
+                                style={{ width: 220, height: 160, borderRadius: 18, background: '#e3e3e3', border: '3px solid #1976d2', boxShadow: 4 }}
                             />
-                            <Typography variant="caption" sx={{ color: '#1976d2', fontWeight: 600 }}>Bạn</Typography>
+                            <Typography variant="caption" sx={{ color: '#1976d2', fontWeight: 600 }}>You</Typography>
                         </Box>
-                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                             <video
                                 ref={remoteVideoRef}
                                 autoPlay
                                 playsInline
-                                style={{ width: 320, height: 240, borderRadius: 16, background: '#e3e3e3', border: '2px solid #1976d2' }}
+                                muted={false}
+                                style={{ width: 320, height: 240, borderRadius: 22, background: '#e3e3e3', border: '3px solid #1976d2', boxShadow: 4 }}
                             />
-                            <Typography variant="caption" sx={{ color: '#1976d2', fontWeight: 600 }}>Đối phương</Typography>
+                            <Typography variant="caption" sx={{ color: '#1976d2', fontWeight: 600 }}>Other user</Typography>
                         </Box>
                     </Box>
                 ) : (
-                    <Avatar sx={{ width: 90, height: 90, mb: 2, border: '3px solid #1976d2' }} src={otherUser?.avt_file_path} />
+                    <Box sx={{
+                        display: 'flex',
+                        flexDirection: { xs: 'column', md: 'row' },
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 6,
+                        width: '100%',
+                        mb: 2,
+                    }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                            <Avatar sx={{ width: 180, height: 180, mb: 2, border: '3px solid #1976d2', boxShadow: 4 }} src={selectedProfileImages?.find(img => img.is_featured)?.path || otherUser?.avt_file_path} />
+                            <Typography variant="caption" sx={{ color: '#1976d2', fontWeight: 600 }}>You</Typography>
+                            <audio
+                                ref={localVideoRef}
+                                autoPlay
+                                muted={muted}
+                                controls={false}
+                                style={{ width: 220, height: 40, marginTop: 8 }}
+                            />
+                        </Box>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                            <Avatar sx={{ width: 180, height: 180, mb: 2, border: '3px solid #1976d2', boxShadow: 4 }} src={selectedProfileImages?.find(img => img.is_featured)?.path || otherUser?.avt_file_path} />
+                            <Typography variant="caption" sx={{ color: '#1976d2', fontWeight: 600 }}>Other user</Typography>
+                            <audio
+                                ref={remoteVideoRef}
+                                autoPlay
+                                muted={false}
+                                controls={false}
+                                style={{ width: 320, height: 40, marginTop: 8 }}
+                            />
+                        </Box>
+                    </Box>
                 )}
                 {callType === 'video' && (
                     <Box sx={{ width: '100%', textAlign: 'center', mt: 1 }}>
                         {(!localVideoRef.current?.srcObject || !remoteVideoRef.current?.srcObject) && (
                             <Typography variant="body2" sx={{ color: '#f44336', fontWeight: 500 }}>
-                                Đang kết nối video...
+                                Connecting video...
                             </Typography>
                         )}
                     </Box>
                 )}
-                <Typography variant="subtitle1" sx={{ mt: 2, fontWeight: 600, color: '#1976d2' }}>
-                    {otherUser?.name || 'Đang kết nối...'}
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
-
-                    <Button variant="contained" color="error" onClick={handleEndCall} startIcon={<CallEndIcon />} sx={{ fontWeight: 600, fontSize: 16, borderRadius: 2, boxShadow: 2 }}>Kết thúc</Button>
+                <Box sx={{ display: 'flex', gap: 6, mt: 4, justifyContent: 'center', width: '100%' }}>
+                    <IconButton color={muted ? 'error' : 'primary'} onClick={handleToggleMute} sx={{ width: 64, height: 64, fontSize: 32, border: muted ? '2px solid #f44336' : '2px solid #1976d2', background: muted ? '#ffebee' : '#e3f2fd' }}>
+                        {muted ? <VolumeOff sx={{ fontSize: 40 }} /> : <VolumeUp sx={{ fontSize: 40 }} />}
+                    </IconButton>
+                    <IconButton color={cameraOn ? 'primary' : 'error'} onClick={handleToggleCamera} sx={{ width: 64, height: 64, fontSize: 32, border: cameraOn ? '2px solid #1976d2' : '2px solid #f44336', background: cameraOn ? '#e3f2fd' : '#ffebee' }}>
+                        {cameraOn ? <VideocamIcon sx={{ fontSize: 40 }} /> : <VideocamOff sx={{ fontSize: 40 }} />}
+                    </IconButton>
+                    <Button variant="contained" color="error" onClick={handleEndCall} startIcon={<CallEndIcon sx={{ fontSize: 40 }} />} sx={{ fontWeight: 700, fontSize: 24, borderRadius: 4, boxShadow: 6, px: 6, py: 2, background: 'linear-gradient(90deg, #f44336 0%, #ff7961 100%)', minWidth: 180 }}>
+                        End Call
+                    </Button>
                 </Box>
+                <style>{`
+                    @keyframes ringing {
+                        0% { box-shadow: 0 0 0 0 #1976d2; }
+                        70% { box-shadow: 0 0 0 10px #1976d233; }
+                        100% { box-shadow: 0 0 0 0 #1976d2; }
+                    }
+                    @keyframes fadeIn {
+                        0% { opacity: 0; transform: scale(0.95); }
+                        100% { opacity: 1; transform: scale(1); }
+                    }
+                `}</style>
             </DialogContent>
         </Dialog>
     );
@@ -465,7 +639,7 @@ const Message = ({ acceptedCallInfo, setAcceptedCallInfo }) => {
     );
 
     return (
-        <Box sx={{ display: 'flex', height: '100vh', bgcolor: 'whitesmoke', marginTop: '18px' }}>
+        <Box sx={{ display: 'flex', height: '100vh', bgcolor: 'whitesmoke', marginTop: '18px', position: 'relative' }}>
             {/* Danh sách liên hệ */}
             <Box sx={{ width: '25%', bgcolor: 'white', borderRight: '1px solid lightgray', overflowY: 'auto' }}>
                 <Typography variant="h6" sx={{ padding: '10px', fontWeight: 'bold' }}>
@@ -616,78 +790,8 @@ const Message = ({ acceptedCallInfo, setAcceptedCallInfo }) => {
                                 >
                                     <VideocamIcon />
                                 </IconButton>
-            {/* Call Notification Dialog */}
-            {callDialog.open && (
-                <Box
-                    sx={{
-                        position: 'fixed',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        zIndex: 2000,
-                        bgcolor: 'white',
-                        borderRadius: 2,
-                        boxShadow: 24,
-                        p: 4,
-                        minWidth: 300,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                    }}
-                >
-                    <Typography variant="h6" sx={{ mb: 2 }}>
-                        {callDialog.from?.user_id === state.userData.user_id
-                            ? `Đang gọi ${selectedUser?.name} (${callDialog.type === 'video' ? 'Video' : 'Audio'})...`
-                            : `${callDialog.from?.name || 'Người dùng'} đang gọi bạn (${callDialog.type === 'video' ? 'Video' : 'Audio'})`}
-                    </Typography>
-                    {/* Video/Audio UI */}
-                    <Box sx={{ display: 'flex', flexDirection: 'row', mb: 2 }}>
-                        <video ref={localVideoRef} autoPlay muted playsInline style={{ width: 120, height: 90, background: '#eee', marginRight: 8, borderRadius: 8 }} />
-                        <video ref={remoteVideoRef} autoPlay playsInline style={{ width: 120, height: 90, background: '#eee', borderRadius: 8 }} />
-                    </Box>
-            {callDialog.from?.user_id !== state.userData.user_id && (
-                <Button variant="contained" color="primary" sx={{ mb: 1 }} onClick={async () => {
-                    if (incomingCallInfo && peerId) {
-                        socket.emit('accept-call', {
-                            toUser: incomingCallInfo.fromUser.user_id,
-                            fromUser: state.userData,
-                            type: incomingCallInfo.type,
-                            chat_rooms_id: incomingCallInfo.chat_rooms_id,
-                            peerId,
-                        });
-                        setCallActive(true);
-                        setCallStartTime(Date.now());
-                        setCallDialog((prev) => ({ ...prev, open: true }));
-                        // Answer the call (connect to caller's peerId)
-                        try {
-                            const stream = await navigator.mediaDevices.getUserMedia({
-                                video: incomingCallInfo.type === 'video',
-                                audio: true,
-                            });
-                            setMediaStream(stream);
-                            if (localVideoRef.current) {
-                                localVideoRef.current.srcObject = stream;
-                            }
-                            const call = peer.call(incomingCallInfo.peerId, stream, { metadata: { type: incomingCallInfo.type } });
-                            call.on('stream', (remoteStream) => {
-                                setRemoteStream(remoteStream);
-                                if (remoteVideoRef.current) {
-                                    remoteVideoRef.current.srcObject = remoteStream;
-                                }
-                            });
-                        } catch (err) {
-                            alert('Không thể truy cập camera/microphone.');
-                        }
-                    }
-                }}>
-                    Chấp nhận
-                </Button>
-            )}
-                    <Button variant="outlined" color="error" startIcon={<Close />} onClick={handleEndCall}>
-                        Kết thúc cuộc gọi
-                    </Button>
-                </Box>
-            )}
+            {/* Enlarged Call Dialog Overlay */}
+            {callDialog.open && renderCallDialog()}
 
                                 {/* Icon Info */}
                                 <IconButton

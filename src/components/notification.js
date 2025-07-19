@@ -9,7 +9,7 @@ const Notification = ({ notification, onAction }) => {
     const handleAction = async (action) => {
         try {
             const res = await instance.post('/update-friendship-from-notification', {
-                notificationId: notification.id,
+                notification_id: notification.id,
                 action: action,
                 senderId: notification.sender_id,
                 receiverId: notification.receiver_id,

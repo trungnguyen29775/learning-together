@@ -71,39 +71,45 @@ const TinderCards = () => {
     }
 
     useEffect(() => {
-        if (state.login) {
-            instance
-                .post('/get-all-user', { user_id: state.userData.user_id })
-                .then((res) => {
-                    setProfiles(res.data);
-
-                    const imagePromises = res.data.map((profile) =>
-                        instance
-                            .get(`/user-image/get-user-images/${profile.user_id}`)
-                            .then((response) => ({
-                                user_id: profile.user_id,
-                                images: response.data,
-                            }))
-                            .catch(() => ({
-                                user_id: profile.user_id,
-                                images: [],
-                            })),
-                    );
-
-                    Promise.all(imagePromises).then((results) => {
-                        const imagesMap = {};
-                        results.forEach((result) => {
-                            imagesMap[result.user_id] = result.images;
-                        });
-                        setUserImages(imagesMap);
-                    });
-                })
-                .catch((err) => {
-                    console.error('Error fetching profiles:', err);
-                    setError('Failed to load profiles');
+        async function fetchRecommendations() {
+            if (!state.login) return;
+            try {
+                // Fetch recommended users from Node.js backend
+                const res = await instance.post('/api/recommend', {
+                    user_id: state.userData.user_id,
                 });
+                let recommended = res.data.recommendations || [];
+                // Sort by score (accuracy) descending
+                recommended = recommended.sort((a, b) => (b.score || 0) - (a.score || 0));
+                setProfiles(recommended);
+
+                // Fetch images for recommended users
+                const imagePromises = recommended.map((profile) =>
+                    instance
+                        .get(`/user-image/get-user-images/${profile.user_id}`)
+                        .then((response) => ({
+                            user_id: profile.user_id,
+                            images: response.data,
+                        }))
+                        .catch(() => ({
+                            user_id: profile.user_id,
+                            images: [],
+                        })),
+                );
+
+                const results = await Promise.all(imagePromises);
+                const imagesMap = {};
+                results.forEach((result) => {
+                    imagesMap[result.user_id] = result.images;
+                });
+                setUserImages(imagesMap);
+            } catch (err) {
+                console.error('Error fetching recommendations:', err);
+                setError('Failed to load recommended profiles');
+            }
         }
-    }, [state.userData.user_id, state.login]);
+        fetchRecommendations();
+    }, [state.userData, state.login]);
 
     const handleAction = async (type) => {
         await controls.start({
@@ -114,35 +120,16 @@ const TinderCards = () => {
 
         if (type === 'like') {
             try {
-                const res = await instance.post('/create-friendship', {
+                // Store like for learning in Node.js backend
+                await instance.post('/api/like', {
                     user_id: state.userData.user_id,
-                    friend_id: profiles[currentIndex].user_id,
+                    liked_user_id: profiles[currentIndex].user_id,
                 });
-
-                if (res.status === 200) {
-                    setSnackbar({
-                        open: true,
-                        message: '🎉 Congratulations, you matched! 🎉',
-                        severity: 'success',
-                    });
-                    await instance.post('/create-notification', {
-                        type: 'matched',
-                        data: {
-                            user_id: state.userData.user_id,
-                            friend_id: profiles[currentIndex].user_id,
-                            currentName: state.userData.name,
-                            targetName: profiles[currentIndex].name,
-                            currentAvtFilePath: state.userData.avt_file_path,
-                            targetAvtFilePath: profiles[currentIndex].avt_file_path,
-                        },
-                    });
-                } else if (res.status === 201) {
-                    setSnackbar({
-                        open: true,
-                        message: `❤️ You liked ${profiles[currentIndex]?.name}!`,
-                        severity: 'info',
-                    });
-                }
+                setSnackbar({
+                    open: true,
+                    message: `❤️ You liked ${profiles[currentIndex]?.name}!`,
+                    severity: 'info',
+                });
             } catch (err) {
                 console.log(err);
                 setSnackbar({
@@ -152,28 +139,11 @@ const TinderCards = () => {
                 });
             }
         } else {
-            try {
-                const res = await instance.post('/create-friendship', {
-                    user_id: state.userData.user_id,
-                    friend_id: profiles[currentIndex].user_id,
-                    status: 'skipped',
-                });
-
-                if (res.status === 201) {
-                    setSnackbar({
-                        open: true,
-                        message: 'You skipped this person ❌',
-                        severity: 'error',
-                    });
-                }
-            } catch (err) {
-                console.log(err);
-                setSnackbar({
-                    open: true,
-                    message: 'An error occurred, please try again!',
-                    severity: 'error',
-                });
-            }
+            setSnackbar({
+                open: true,
+                message: 'You skipped this person ❌',
+                severity: 'error',
+            });
         }
 
         if (currentIndex < profiles.length - 1) {
@@ -227,6 +197,12 @@ const TinderCards = () => {
     const renderProfileInfo = () => {
         if (!profiles[currentIndex]) return null;
 
+        // Calculate accuracy percentage based on score
+        const profile = profiles[currentIndex];
+        if (!profile) return null;
+        // Assume max score is hobbyKeys.length + 1 (for like boost)
+        const maxScore = 22; // 21 hobbies + 1 like boost
+        const accuracy = profile.score ? Math.round((profile.score / maxScore) * 100) : 0;
         return (
             <Box
                 sx={{
@@ -241,47 +217,46 @@ const TinderCards = () => {
             >
                 <Box sx={{ mb: 3 }}>
                     <Typography variant="h4" fontWeight="bold" sx={{ mb: 1 }}>
-                        {profiles[currentIndex]?.name || 'N/A'}, {calculateAge(profiles[currentIndex]?.dob)}
+                        {profile.name || 'N/A'}, {calculateAge(profile.dob)}
                     </Typography>
-
+                    <Typography variant="body2" color="primary" sx={{ mb: 1, fontWeight: 600 }}>
+                        Người này hợp với bạn đến {accuracy}%
+                    </Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                         <LocationOn fontSize="small" />
                         <Typography variant="body1" sx={{ ml: 0.5 }}>
-                            {profiles[currentIndex]?.location || 'Unknown location'}
+                            {profile.location || 'Unknown location'}
                         </Typography>
                     </Box>
-
                     <Typography variant="body1" sx={{ mb: 3 }}>
-                        {profiles[currentIndex]?.bio || 'No bio available'}
+                        {profile.bio || 'No bio available'}
                     </Typography>
                 </Box>
-
                 <Box sx={{ mb: 3 }}>
                     <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
                         Basics
                     </Typography>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-                        {profiles[currentIndex]?.school && (
-                            <Chip icon={<School />} label={profiles[currentIndex].school} variant="outlined" />
+                        {profile.school && (
+                            <Chip icon={<School />} label={profile.school} variant="outlined" />
                         )}
-                        {profiles[currentIndex]?.job && (
-                            <Chip icon={<Work />} label={profiles[currentIndex].job} variant="outlined" />
+                        {profile.job && (
+                            <Chip icon={<Work />} label={profile.job} variant="outlined" />
                         )}
-                        {profiles[currentIndex]?.needs && (
+                        {profile.needs && (
                             <Chip
-                                label={`Looking for: ${profiles[currentIndex].needs.replace(/([A-Z])/g, ' $1')}`}
+                                label={`Looking for: ${profile.needs.replace(/([A-Z])/g, ' $1')}`}
                                 variant="outlined"
                             />
                         )}
                     </Box>
                 </Box>
-
                 <Box sx={{ mb: 3 }}>
                     <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
                         Interests
                     </Typography>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                        {processProfileData(profiles[currentIndex]).map((item, index) => (
+                        {processProfileData(profile).map((item, index) => (
                             <Chip
                                 key={index}
                                 label={item.label}
@@ -300,14 +275,14 @@ const TinderCards = () => {
     return (
         <Box
             sx={{
-                width: '500px',
-                height: '100vh',
+                width: '600px',
                 display: 'flex',
                 flexDirection: 'column',
                 backgroundColor: '#f8f8f8',
                 position: 'relative',
                 overflow: 'hidden',
                 alignItems: 'center',
+
             }}
         >
             {error ? (
@@ -324,6 +299,7 @@ const TinderCards = () => {
                         width: '100%',
                         height: '100%',
                         position: 'relative',
+                        
                     }}
                 >
                     <Box
@@ -340,7 +316,7 @@ const TinderCards = () => {
                             <Box
                                 sx={{
                                     width: '100%',
-                                    height: '70vh',
+                                    height: '100vh',
                                     position: 'relative',
                                     backgroundSize: 'cover',
                                     backgroundPosition: 'center',

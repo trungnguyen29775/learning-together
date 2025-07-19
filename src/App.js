@@ -12,6 +12,8 @@ import ImageUploadPage from './components/imageUploadPage';
 function App() {
     const [state, dispatchState] = useContext(StateContext);
     const navigate = useNavigate();
+    const userProfile = state.userData || {};
+    const likedUsers = state.likedUsers || [];
     useEffect(() => {
         if (state.loggin === false) navigate('/login');
         console.log(state);
@@ -21,6 +23,7 @@ function App() {
     }, [state]);
 
     return (
+        <div>
         <Routes>
             <Route path="/login" element={<Login navigation={navigator} />} />
             <Route path="/register" element={<Register />} />
@@ -28,6 +31,7 @@ function App() {
             <Route path="/hobby" element={<Hobby />} />
             <Route path="/up-load-image" element={<ImageUploadPage />} />
         </Routes>
+        </div>
     );
 }
 
