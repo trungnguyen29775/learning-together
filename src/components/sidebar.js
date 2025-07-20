@@ -1,5 +1,5 @@
 import { ExitToApp, Home, Message, Notifications, Person, Settings, Timelapse, Favorite } from '@mui/icons-material';
-import { Badge, Box, Divider, List, ListItem, Typography, IconButton } from '@mui/material';
+import { Badge, Box, Divider, List, ListItem, Typography, IconButton, ListItems  } from '@mui/material';
 import { useContext, useEffect, useState } from 'react';
 import StateContext from '../context/context.context';
 import { changeComponent, loggout } from '../context/action.context';
@@ -63,6 +63,7 @@ const Sidebar = () => {
                                 ),
                                 label: 'NOTIFICATION',
                             },
+                            {id:'like-you', icon: <Favorite />, label: 'LIKED YOU'},
                         ].map((item) => (
                             <ListItem
                                 key={item.id}
@@ -78,18 +79,7 @@ const Sidebar = () => {
                             </ListItem>
                         ))}
                         {/* Liked You sidebar button */}
-                        <ListItem
-                            sx={{ ...commonStyle, justifyContent: 'center' }}
-                            onClick={() => {
-                                dispatchState(changeComponent('like-you'));
-                                setSelectedComponent('like-you');
-                            }}
-                        >
-                            <IconButton color="secondary">
-                                <Favorite />
-                            </IconButton>
-                            <Typography sx={{ marginLeft: '10px', fontWeight: '600' }}>LIKED YOU</Typography>
-                        </ListItem>
+                       
                     </List>
                 </Box>
             <Divider />

@@ -35,36 +35,14 @@ const TinderCards = () => {
         return age;
     }
 
+    // Helper to extract hobbies/interests from profile
     function processProfileData(profile) {
         if (!profile) return [];
-        const hobbies = Object.keys(profile).filter(
-            (key) =>
-                [
-                    'music',
-                    'game',
-                    'sing',
-                    'eat',
-                    'exercise',
-                    'running',
-                    'badminton',
-                    'walking',
-                    'beach',
-                    'hiking',
-                    'travel',
-                    'reading',
-                    'pets',
-                    'basketball',
-                    'pickelBall',
-                    'horror',
-                    'anime',
-                    'romance',
-                    'action',
-                    'detective',
-                    'fantasy',
-                ].includes(key) && profile[key],
-        );
-
-        return hobbies.map((hobby) => ({
+        const keys = [
+            'exercise', 'running', 'badminton', 'walking', 'beach', 'hiking', 'travel', 'reading', 'pets', 'basketball', 'pickelBall',
+            'horror', 'anime', 'romance', 'action', 'detective', 'fantasy'
+        ];
+        return keys.filter(key => profile[key]).map(hobby => ({
             label: hobby.charAt(0).toUpperCase() + hobby.slice(1),
             status: true,
         }));
@@ -125,6 +103,12 @@ const TinderCards = () => {
                     user_id: state.userData.user_id,
                     liked_user_id: profiles[currentIndex].user_id,
                 });
+               // Gọi API tạo/cập nhật friendship
+               await instance.post('/create-friendship', {
+                   user_id: state.userData.user_id,
+                   friend_id: profiles[currentIndex].user_id,
+                   status: 'pending',
+               });
                 setSnackbar({
                     open: true,
                     message: `❤️ You liked ${profiles[currentIndex]?.name}!`,
@@ -139,6 +123,12 @@ const TinderCards = () => {
                 });
             }
         } else {
+            // Gọi API tạo/cập nhật friendship với trạng thái skipped
+            await instance.post('/create-friendship', {
+                user_id: state.userData.user_id,
+                friend_id: profiles[currentIndex].user_id,
+                status: 'skipped',
+            });
             setSnackbar({
                 open: true,
                 message: 'You skipped this person ❌',
@@ -275,7 +265,7 @@ const TinderCards = () => {
     return (
         <Box
             sx={{
-                width: '600px',
+                width: '800px',
                 display: 'flex',
                 flexDirection: 'column',
                 backgroundColor: '#f8f8f8',
@@ -299,7 +289,8 @@ const TinderCards = () => {
                         width: '100%',
                         height: '100%',
                         position: 'relative',
-                        
+                        display: 'flex',
+                        alignItems: 'center',
                     }}
                 >
                     <Box
@@ -309,6 +300,10 @@ const TinderCards = () => {
                             height: '100%',
                             overflowY: 'auto',
                             '&::-webkit-scrollbar': { display: 'none' },
+                            paddingBottom: '250px',
+                            backgroundColor: 'white',
+                            paddingTop:'300px'
+
                         }}
                     >
                         {/* Hiển thị ảnh đầu tiên */}
@@ -320,6 +315,7 @@ const TinderCards = () => {
                                     position: 'relative',
                                     backgroundSize: 'cover',
                                     backgroundPosition: 'center',
+                                    paddingTop: '16px',
                                     backgroundImage: `url(${getCurrentProfileImages()[0].path})`,
                                 }}
                             >
@@ -426,8 +422,9 @@ const TinderCards = () => {
                         left: 0,
                         right: 0,
                         display: 'flex',
-                        justifyContent: 'center',
-                        gap: 4,
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        px: 6,
                         zIndex: 10,
                     }}
                 >
@@ -445,6 +442,7 @@ const TinderCards = () => {
                     >
                         <Close sx={{ color: theme.palette.error.main, fontSize: '32px' }} />
                     </IconButton>
+                    <Box sx={{ flex: 1 }} />
                     <IconButton
                         onClick={() => handleAction('like')}
                         sx={{

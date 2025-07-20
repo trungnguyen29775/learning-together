@@ -297,14 +297,15 @@ const Profile = () => {
             is_featured: userImages.length === 0,
         };
 
-        setUserImages((prev) => [...prev, newImage]);
         showSnackbar('Ảnh đã được tải lên thành công!', 'success');
+        // Always reload images from server after upload
+        loadUserImages();
     };
 
     const handleDeleteFromServer = async (imageId) => {
         try {
             await instance.delete('/user-image/delete-image', {
-                user_image_id: imageId,
+                data: { user_image_id: imageId },
             });
         } catch (err) {
             console.error('Error deleting image:', err);
@@ -332,8 +333,9 @@ const Profile = () => {
                 }
             }
 
-            setUserImages(newImages);
             showSnackbar('Ảnh đã được xóa thành công', 'success');
+            // Always reload images from server after delete
+            await loadUserImages();
         } catch (err) {
             setError('Xóa ảnh không thành công');
             showSnackbar('Xóa ảnh không thành công', 'error');
@@ -356,6 +358,7 @@ const Profile = () => {
                     if (img.user_image_id && img.is_featured) {
                         return instance.post('/user-image/update-image', {
                             user_image_id: img.user_image_id,
+                            path: img.url || img.path,
                             is_featured: false,
                         });
                     }
@@ -367,12 +370,14 @@ const Profile = () => {
             if (userImages[index].user_image_id) {
                 await instance.post('/user-image/update-image', {
                     user_image_id: userImages[index].user_image_id,
+                    path: userImages[index].url || userImages[index].path,
                     is_featured: true,
                 });
             }
 
-            setUserImages(newImages);
             showSnackbar('Đã cập nhật ảnh đại diện', 'success');
+            // Always reload images from server after update
+            await loadUserImages();
         } catch (err) {
             console.error('Error updating featured image:', err);
             setError('Cập nhật ảnh đại diện không thành công');
@@ -465,13 +470,13 @@ const Profile = () => {
             }
             // Save images
             if (userImages.length > 0) {
-                // Upload new images
+                // Upload new images (only if url or path exists)
                 const uploadPromises = userImages
-                    .filter((img) => !img.user_image_id)
+                    .filter((img) => !img.user_image_id && (img.url || img.path))
                     .map((img) => {
                         return instance.post('/user-image/create-image', {
                             user_id: state.userData.user_id,
-                            path: img.url,
+                            path: img.url || img.path,
                             is_featured: img.is_featured,
                         });
                     });
@@ -481,10 +486,13 @@ const Profile = () => {
                     .map((img) => {
                         return instance.post('/user-image/update-image', {
                             user_image_id: img.user_image_id,
+                            path: img.url || img.path,
                             is_featured: img.is_featured,
                         });
                     });
                 await Promise.all([...uploadPromises, ...updatePromises]);
+                // Always reload images from server after upload/update
+                await loadUserImages();
             }
             showSnackbar('Thông tin đã được cập nhật thành công', 'success');
             // Reload profile data to ensure we have the latest state
@@ -550,19 +558,7 @@ const Profile = () => {
             }}
         >
             <Slide direction="down" in={true} mountOnEnter unmountOnExit>
-                <Box sx={{ textAlign: 'center', mb: 4 }}>
-                    <Avatar
-                        sx={{
-                            width: 80,
-                            height: 80,
-                            mb: 2,
-                            mx: 'auto',
-                            bgcolor: theme.palette.primary.main,
-                            marginTop: '20px',
-                        }}
-                    >
-                        <PhotoLibrary fontSize="large" />
-                    </Avatar>
+                <Box sx={{ textAlign: 'center', mb: 4, mt: 3 }}>
                     <Typography
                         variant="h4"
                         gutterBottom

@@ -65,6 +65,7 @@ const LikedYouSidebar = ({ open, onClose }) => {
             instance
                 .get(`/get-liked-you/${state.userData.user_id}`)
                 .then((res) => {
+                    console.log('Liked users:', res.data);
                     setLikedUsers(res.data);
                     // Fetch images for each user
                     const imagePromises = res.data.map((profile) =>
